@@ -1,0 +1,445 @@
+services:
+
+  # =========================================================
+  # PostgreSQL + pgvector
+  # =========================================================
+
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: eshop-postgres
+
+    environment:
+      POSTGRES_DB: eshopdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # RabbitMQ
+  # =========================================================
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: eshop-rabbitmq
+
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Redis
+  # =========================================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: eshop-redis
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis_data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Identity API
+  # =========================================================
+
+  identity-api:
+    image: eshop-identity-api:v1
+    container_name: eshop-identity-api
+
+    ports:
+      - "6004:6004"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:6004
+
+      ConnectionStrings__identitydb: >
+        Host=postgres;
+        Port=5432;
+        Database=identitydb;
+        Username=postgres;
+        Password=postgres_password
+
+      BasketApiClient: http://basket-api:8080
+      OrderingApiClient: http://ordering-api:8080
+      WebhooksApiClient: http://webhooks-api:8080
+
+      WebhooksWebClient: http://localhost:6007
+      WebAppClient: http://localhost:6006
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Catalog API
+  # =========================================================
+
+  catalog-api:
+    image: eshop-catalog-api:v1
+    container_name: eshop-catalog-api
+
+    ports:
+      - "6001:8080"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+      ConnectionStrings__catalogdb: >
+        Host=postgres;
+        Port=5432;
+        Database=catalogdb;
+        Username=postgres;
+        Password=postgres_password
+
+      ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Basket API
+  # =========================================================
+
+  basket-api:
+    image: eshop-basket-api:v1
+    container_name: eshop-basket-api
+
+    ports:
+      - "6002:8080"
+
+    depends_on:
+      redis:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+      identity-api:
+        condition: service_started
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+      ConnectionStrings__redis: redis:6379
+
+      ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
+
+      Identity__Url: http://identity-api:6004
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Ordering API
+  # =========================================================
+
+  ordering-api:
+    image: eshop-ordering-api:v1
+    container_name: eshop-ordering-api
+
+    ports:
+      - "6003:8080"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+      identity-api:
+        condition: service_started
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+      ConnectionStrings__orderingdb: >
+        Host=postgres;
+        Port=5432;
+        Database=orderingdb;
+        Username=postgres;
+        Password=postgres_password
+
+      ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
+
+      Identity__Url: http://identity-api:6004
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Webhooks API
+  # =========================================================
+
+  webhooks-api:
+    image: eshop-webhooks-api:v1
+    container_name: eshop-webhooks-api
+
+    ports:
+      - "6005:8080"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+      identity-api:
+        condition: service_started
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+      ConnectionStrings__webhooksdb: >
+        Host=postgres;
+        Port=5432;
+        Database=webhooksdb;
+        Username=postgres;
+        Password=postgres_password
+
+      ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
+
+      Identity__Url: http://identity-api:6004
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Order Processor
+  # =========================================================
+
+  order-processor:
+    image: eshop-order-processor:v1
+    container_name: eshop-order-processor
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+      rabbitmq:
+        condition: service_healthy
+
+      ordering-api:
+        condition: service_started
+
+    environment:
+      DOTNET_ENVIRONMENT: Development
+
+      ConnectionStrings__orderingdb: >
+        Host=postgres;
+        Port=5432;
+        Database=orderingdb;
+        Username=postgres;
+        Password=postgres_password
+
+      ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Payment Processor
+  # =========================================================
+
+  payment-processor:
+    image: eshop-payment-processor:v1
+    container_name: eshop-payment-processor
+
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+      ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Webhook Client
+  # =========================================================
+
+  webhooks-client:
+    image: eshop-webhook-client:v1
+    container_name: eshop-webhook-client
+
+    ports:
+      - "6007:8080"
+
+    depends_on:
+      webhooks-api:
+        condition: service_started
+
+      identity-api:
+        condition: service_started
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+      IdentityUrl: http://identity-api:6004
+
+      CallBackUrl: http://localhost:6007
+
+      services__webhooks-api__http__0: http://webhooks-api:8080
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+  # =========================================================
+  # Web Application
+  # =========================================================
+
+  webapp:
+    image: eshop-webapp:v1
+    container_name: eshop-webapp
+
+    ports:
+      - "6006:8080"
+
+    depends_on:
+      basket-api:
+        condition: service_started
+
+      catalog-api:
+        condition: service_started
+
+      ordering-api:
+        condition: service_started
+
+      identity-api:
+        condition: service_started
+
+      rabbitmq:
+        condition: service_healthy
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+
+      IdentityUrl: http://identity-api:6004
+
+      CallBackUrl: http://localhost:6006
+
+      ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
+
+      # Aspire/.NET service discovery mappings
+      services__basket-api__http__0: http://basket-api:8080
+
+      services__catalog-api__http__0: http://catalog-api:8080
+
+      services__ordering-api__http__0: http://ordering-api:8080
+
+    networks:
+      - eshop-network
+
+    restart: unless-stopped
+
+
+# =========================================================
+# Persistent Storage
+# =========================================================
+
+volumes:
+
+  postgres_data:
+
+  rabbitmq_data:
+
+  redis_data:
+
+
+# =========================================================
+# Docker Network
+# =========================================================
+
+networks:
+
+  eshop-network:
+    driver: bridge
