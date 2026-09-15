@@ -1,0 +1,157 @@
+name: CloudCart CI/CD - Azure
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: cloudcart-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy CloudCart
+    runs-on: ubuntu-latest
+
+    env:
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+      DOTNET_NOLOGO: true
+
+    steps:
+
+      # ---------------------------------------------------
+      # 1. Checkout repository
+      # ---------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+
+      # ---------------------------------------------------
+      # 2. Install .NET 10
+      # ---------------------------------------------------
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+
+      # ---------------------------------------------------
+      # 3. Install Aspire CLI
+      # ---------------------------------------------------
+      - name: Install Aspire CLI
+        run: |
+          curl -sSL https://aspire.dev/install.sh | bash
+          echo "$HOME/.aspire/bin" >> "$GITHUB_PATH"
+
+
+      # ---------------------------------------------------
+      # 4. Restore dependencies
+      # ---------------------------------------------------
+      - name: Restore dependencies
+        run: dotnet restore eShop.Web.slnf
+
+
+      # ---------------------------------------------------
+      # 5. Build application
+      # ---------------------------------------------------
+      - name: Build application
+        run: |
+          dotnet build eShop.Web.slnf \
+            --configuration Release \
+            --no-restore
+
+
+      # ---------------------------------------------------
+      # 6. Login to Azure using OIDC
+      # ---------------------------------------------------
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+
+      # ---------------------------------------------------
+      # 7. Verify Azure login
+      # ---------------------------------------------------
+      - name: Verify Azure connection
+        run: |
+          az account show \
+            --query "{subscription:name, tenant:tenantId}" \
+            --output table
+
+
+      # ---------------------------------------------------
+      # 8. Show Aspire deployment plan
+      # ---------------------------------------------------
+      - name: Check Aspire deployment plan
+        env:
+          Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          Azure__Location: ${{ vars.AZURE_LOCATION }}
+          Azure__ResourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+        run: |
+          aspire deploy \
+            --apphost ./src/eShop.AppHost/eShop.AppHost.csproj \
+            --list-steps
+
+
+      # ---------------------------------------------------
+      # 9. Deploy to Azure Container Apps
+      # ---------------------------------------------------
+      - name: Deploy CloudCart to Azure
+        env:
+          Azure__SubscriptionId: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          Azure__Location: ${{ vars.AZURE_LOCATION }}
+          Azure__ResourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+        run: |
+          aspire deploy \
+            --apphost ./src/eShop.AppHost/eShop.AppHost.csproj \
+            --environment Production \
+            --non-interactive
+
+
+      # ---------------------------------------------------
+      # 10. Show deployed Container Apps
+      # ---------------------------------------------------
+      - name: Show deployed Azure Container Apps
+        if: success()
+        run: |
+          az containerapp list \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query "[].{Name:name, URL:properties.configuration.ingress.fqdn}" \
+            --output table
+
+
+      # ---------------------------------------------------
+      # 11. Slack notification
+      # ---------------------------------------------------
+      - name: Send Slack notification
+        if: always()
+        continue-on-error: true
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          if [ -z "$SLACK_WEBHOOK_URL" ]; then
+            echo "SLACK_WEBHOOK_URL is not configured. Skipping notification."
+            exit 0
+          fi
+
+          PAYLOAD=$(jq -n \
+            --arg text "CloudCart deployment status: $JOB_STATUS | Branch: $GITHUB_REF_NAME | Commit: ${GITHUB_SHA::7}" \
+            '{text: $text}')
+
+          curl -fsS \
+            -X POST \
+            -H 'Content-type: application/json' \
+            --data "$PAYLOAD" \
+            "$SLACK_WEBHOOK_URL"
