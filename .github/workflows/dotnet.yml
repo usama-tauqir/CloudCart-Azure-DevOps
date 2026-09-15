@@ -1,0 +1,541 @@
+name: CloudCart CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
+
+env:
+  APP_ROOT: application/eShop
+  RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
+  LOCATION: ${{ vars.AZURE_LOCATION }}
+  ACR_NAME: ${{ vars.ACR_NAME }}
+  ACA_ENVIRONMENT: ${{ vars.ACA_ENVIRONMENT }}
+
+# =========================================================
+# 1. CI - Dependencies, Tests, Compilation
+# =========================================================
+
+jobs:
+
+  ci:
+    name: Build and Test
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: application/eShop
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # -------------------------
+      # Dependency Installation
+      # -------------------------
+
+      - name: Restore dependencies
+        run: dotnet restore eShop.slnx
+
+      # -------------------------
+      # Dependency Security Scan
+      # -------------------------
+
+      - name: Scan NuGet dependencies
+        run: |
+          dotnet list eShop.slnx package \
+            --vulnerable \
+            --include-transitive \
+            | tee dependency-audit.txt
+
+      # -------------------------
+      # Automated Unit Testing
+      # -------------------------
+
+      - name: Run tests
+        run: |
+          dotnet test eShop.slnx \
+            --configuration Release \
+            --no-restore \
+            --logger "trx" \
+            --results-directory TestResults
+
+      # -------------------------
+      # Code Compilation
+      # -------------------------
+
+      - name: Build solution
+        run: |
+          dotnet build eShop.slnx \
+            --configuration Release \
+            --no-restore
+
+      # -------------------------
+      # Test Artifacts
+      # -------------------------
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudcart-test-results
+          path: application/eShop/TestResults
+          if-no-files-found: ignore
+
+      - name: Upload dependency audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit
+          path: application/eShop/dependency-audit.txt
+
+
+  # =========================================================
+  # 2. CODE SECURITY SCANNING
+  # =========================================================
+
+  codeql:
+    name: CodeQL Security Scan
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: csharp
+
+      - name: Restore
+        working-directory: application/eShop
+        run: dotnet restore eShop.slnx
+
+      - name: Build for CodeQL
+        working-directory: application/eShop
+        run: |
+          dotnet build eShop.slnx \
+            --configuration Release \
+            --no-restore
+
+      - name: Analyze source code
+        uses: github/codeql-action/analyze@v3
+
+
+  # =========================================================
+  # 3. INFRASTRUCTURE PROVISIONING
+  # Only happens for main branch deployment
+  # =========================================================
+
+  infrastructure:
+    name: Provision Azure Infrastructure
+
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+
+    needs:
+      - ci
+      - codeql
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # -------------------------
+      # Azure OIDC Authentication
+      # -------------------------
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Register Azure providers
+        run: |
+          az provider register \
+            --namespace Microsoft.ContainerRegistry
+
+          az provider register \
+            --namespace Microsoft.App
+
+          az provider register \
+            --namespace Microsoft.OperationalInsights
+
+      - name: Create Resource Group if missing
+        run: |
+          az group create \
+            --name "$RESOURCE_GROUP" \
+            --location "$LOCATION"
+
+      # -------------------------
+      # Azure Container Registry
+      # -------------------------
+
+      - name: Provision Azure Container Registry
+        shell: bash
+        run: |
+          if az acr show \
+              --name "$ACR_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              >/dev/null 2>&1
+          then
+              echo "ACR already exists."
+          else
+              echo "Creating ACR..."
+
+              az acr create \
+                --resource-group "$RESOURCE_GROUP" \
+                --name "$ACR_NAME" \
+                --sku Basic
+          fi
+
+      # -------------------------
+      # Azure Container Apps Environment
+      # -------------------------
+
+      - name: Install Container Apps extension
+        run: |
+          az extension add \
+            --name containerapp \
+            --upgrade
+
+      - name: Provision Container Apps Environment
+        shell: bash
+        run: |
+          if az containerapp env show \
+              --name "$ACA_ENVIRONMENT" \
+              --resource-group "$RESOURCE_GROUP" \
+              >/dev/null 2>&1
+          then
+              echo "Container Apps environment already exists."
+          else
+              echo "Creating Container Apps environment..."
+
+              az containerapp env create \
+                --name "$ACA_ENVIRONMENT" \
+                --resource-group "$RESOURCE_GROUP" \
+                --location "$LOCATION"
+          fi
+
+
+  # =========================================================
+  # 4. CONTAINERIZATION + REGISTRY UPLOAD
+  # =========================================================
+
+  docker:
+    name: Docker - ${{ matrix.app }}
+
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+
+    needs:
+      - infrastructure
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        include:
+
+          - app: catalog-api
+            image: eshop-catalog-api
+            dockerfile: src/Catalog.API/Dockerfile
+
+          - app: basket-api
+            image: eshop-basket-api
+            dockerfile: src/Basket.API/Dockerfile
+
+          - app: ordering-api
+            image: eshop-ordering-api
+            dockerfile: src/Ordering.API/Dockerfile
+
+          - app: identity-api
+            image: eshop-identity-api
+            dockerfile: src/Identity.API/Dockerfile
+
+          - app: webhooks-api
+            image: eshop-webhooks-api
+            dockerfile: src/Webhooks.API/Dockerfile
+
+          - app: order-processor
+            image: eshop-order-processor
+            dockerfile: src/OrderProcessor/Dockerfile
+
+          - app: payment-processor
+            image: eshop-payment-processor
+            dockerfile: src/PaymentProcessor/Dockerfile
+
+          - app: webapp
+            image: eshop-webapp
+            dockerfile: src/WebApp/Dockerfile
+
+          - app: webhook-client
+            image: eshop-webhook-client
+            dockerfile: src/WebhookClient/Dockerfile
+
+
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # -------------------------
+      # Registry Authentication
+      # -------------------------
+
+      - name: Login to Azure Container Registry
+        run: |
+          az acr login --name "$ACR_NAME"
+
+      - name: Prepare image name
+        run: |
+          echo \
+          "IMAGE=${ACR_NAME}.azurecr.io/${{ matrix.image }}:${GITHUB_SHA}" \
+          >> "$GITHUB_ENV"
+
+      # -------------------------
+      # Containerization
+      # -------------------------
+
+      - name: Build Docker image
+        working-directory: application/eShop
+        run: |
+          docker build \
+            -f "${{ matrix.dockerfile }}" \
+            -t "$IMAGE" \
+            .
+
+      # -------------------------
+      # Container Security Scan
+      # -------------------------
+
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+
+      # -------------------------
+      # Artifact Uploading → ACR
+      # -------------------------
+
+      - name: Push image to Azure Container Registry
+        run: |
+          docker push "$IMAGE"
+
+
+  # =========================================================
+  # 5. SERVER DEPLOYMENT
+  # Azure Container Apps
+  # =========================================================
+
+  deploy:
+    name: Deploy - ${{ matrix.app }}
+
+    needs:
+      - docker
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+
+      matrix:
+        include:
+
+          - app: catalog-api
+            image: eshop-catalog-api
+            ingress: internal
+
+          - app: basket-api
+            image: eshop-basket-api
+            ingress: internal
+
+          - app: ordering-api
+            image: eshop-ordering-api
+            ingress: internal
+
+          - app: identity-api
+            image: eshop-identity-api
+            ingress: external
+
+          - app: webhooks-api
+            image: eshop-webhooks-api
+            ingress: internal
+
+          - app: order-processor
+            image: eshop-order-processor
+            ingress: disabled
+
+          - app: payment-processor
+            image: eshop-payment-processor
+            ingress: disabled
+
+          - app: webapp
+            image: eshop-webapp
+            ingress: external
+
+          - app: webhook-client
+            image: eshop-webhook-client
+            ingress: external
+
+
+    steps:
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy Container App
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          acrName: ${{ vars.ACR_NAME }}
+
+          containerAppName: ${{ matrix.app }}
+
+          containerAppEnvironment: ${{ vars.ACA_ENVIRONMENT }}
+
+          resourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+
+          imageToDeploy: >
+            ${{ vars.ACR_NAME }}.azurecr.io/${{ matrix.image }}:${{ github.sha }}
+
+          ingress: ${{ matrix.ingress }}
+
+          targetPort: 8080
+
+
+  # =========================================================
+  # 6. SMOKE TEST
+  # =========================================================
+
+  smoke-test:
+    name: Production Smoke Test
+
+    needs:
+      - deploy
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Azure Login
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Get WebApp URL
+        run: |
+          WEBAPP_FQDN=$(az containerapp show \
+            --name webapp \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.configuration.ingress.fqdn \
+            --output tsv)
+
+          echo "WEBAPP_URL=https://${WEBAPP_FQDN}" >> "$GITHUB_ENV"
+
+          echo "Testing https://${WEBAPP_FQDN}"
+
+      - name: Smoke test WebApp
+        run: |
+          for i in {1..12}
+          do
+
+            STATUS=$(curl \
+              --silent \
+              --output /dev/null \
+              --write-out "%{http_code}" \
+              "$WEBAPP_URL" || true)
+
+            echo "Attempt $i → HTTP $STATUS"
+
+            if [ "$STATUS" = "200" ] ||
+               [ "$STATUS" = "302" ]
+            then
+              echo "Smoke test passed."
+              exit 0
+            fi
+
+            sleep 10
+
+          done
+
+          echo "Smoke test failed."
+          exit 1
+
+
+  # =========================================================
+  # 7. SLACK SUCCESS NOTIFICATION
+  # =========================================================
+
+  slack-success:
+    name: Slack Notification
+
+    needs:
+      - smoke-test
+
+    if: success()
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Notify Slack
+        uses: slackapi/slack-github-action@v4.0.0
+        with:
+
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+          webhook-type: incoming-webhook
+
+          payload: |
+            {
+              "text": "✅ CloudCart deployment successful!\nRepository: ${{ github.repository }}\nBranch: ${{ github.ref_name }}\nCommit: ${{ github.sha }}\nTriggered by: ${{ github.actor }}\nWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
