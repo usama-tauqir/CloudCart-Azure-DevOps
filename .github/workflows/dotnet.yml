@@ -17,11 +17,11 @@ permissions:
   security-events: write
 
 env:
-  APP_ROOT: application/eShop
   RESOURCE_GROUP: ${{ vars.AZURE_RESOURCE_GROUP }}
   LOCATION: ${{ vars.AZURE_LOCATION }}
   ACR_NAME: ${{ vars.ACR_NAME }}
   ACA_ENVIRONMENT: ${{ vars.ACA_ENVIRONMENT }}
+
 
 # =========================================================
 # 1. CI - Dependencies, Tests, Compilation
@@ -33,43 +33,77 @@ jobs:
     name: Build and Test
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: application/eShop
-
     steps:
 
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # -----------------------------------------------------
+      # Automatically locate eShop.slnx
+      # -----------------------------------------------------
+
+      - name: Find eShop solution
+        shell: bash
+        run: |
+          echo "Repository root:"
+          pwd
+
+          echo "Searching for eShop.slnx..."
+
+          SOLUTION_PATH=$(find "$GITHUB_WORKSPACE" \
+            -type f \
+            -name "eShop.slnx" \
+            -print \
+            -quit)
+
+          if [ -z "$SOLUTION_PATH" ]; then
+            echo "ERROR: eShop.slnx was not found."
+            echo "Repository structure:"
+            find "$GITHUB_WORKSPACE" -maxdepth 4 -type d
+            exit 1
+          fi
+
+          APP_ROOT=$(dirname "$SOLUTION_PATH")
+
+          echo "Solution found:"
+          echo "$SOLUTION_PATH"
+
+          echo "Application root:"
+          echo "$APP_ROOT"
+
+          echo "APP_ROOT=$APP_ROOT" >> "$GITHUB_ENV"
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
 
-      # -------------------------
+      # -----------------------------------------------------
       # Dependency Installation
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Restore dependencies
+        working-directory: ${{ env.APP_ROOT }}
         run: dotnet restore eShop.slnx
 
-      # -------------------------
+      # -----------------------------------------------------
       # Dependency Security Scan
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Scan NuGet dependencies
+        working-directory: ${{ env.APP_ROOT }}
         run: |
           dotnet list eShop.slnx package \
             --vulnerable \
             --include-transitive \
             | tee dependency-audit.txt
 
-      # -------------------------
+      # -----------------------------------------------------
       # Automated Unit Testing
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Run tests
+        working-directory: ${{ env.APP_ROOT }}
         run: |
           dotnet test eShop.slnx \
             --configuration Release \
@@ -77,26 +111,27 @@ jobs:
             --logger "trx" \
             --results-directory TestResults
 
-      # -------------------------
+      # -----------------------------------------------------
       # Code Compilation
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Build solution
+        working-directory: ${{ env.APP_ROOT }}
         run: |
           dotnet build eShop.slnx \
             --configuration Release \
             --no-restore
 
-      # -------------------------
+      # -----------------------------------------------------
       # Test Artifacts
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: cloudcart-test-results
-          path: application/eShop/TestResults
+          path: ${{ env.APP_ROOT }}/TestResults
           if-no-files-found: ignore
 
       - name: Upload dependency audit
@@ -104,7 +139,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: dependency-audit
-          path: application/eShop/dependency-audit.txt
+          path: ${{ env.APP_ROOT }}/dependency-audit.txt
+          if-no-files-found: ignore
 
 
   # =========================================================
@@ -120,6 +156,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Find eShop solution
+        shell: bash
+        run: |
+          echo "Searching for eShop.slnx..."
+
+          SOLUTION_PATH=$(find "$GITHUB_WORKSPACE" \
+            -type f \
+            -name "eShop.slnx" \
+            -print \
+            -quit)
+
+          if [ -z "$SOLUTION_PATH" ]; then
+            echo "ERROR: eShop.slnx was not found."
+            exit 1
+          fi
+
+          APP_ROOT=$(dirname "$SOLUTION_PATH")
+
+          echo "Solution found:"
+          echo "$SOLUTION_PATH"
+
+          echo "Application root:"
+          echo "$APP_ROOT"
+
+          echo "APP_ROOT=$APP_ROOT" >> "$GITHUB_ENV"
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
@@ -131,11 +193,11 @@ jobs:
           languages: csharp
 
       - name: Restore
-        working-directory: application/eShop
+        working-directory: ${{ env.APP_ROOT }}
         run: dotnet restore eShop.slnx
 
       - name: Build for CodeQL
-        working-directory: application/eShop
+        working-directory: ${{ env.APP_ROOT }}
         run: |
           dotnet build eShop.slnx \
             --configuration Release \
@@ -147,7 +209,6 @@ jobs:
 
   # =========================================================
   # 3. INFRASTRUCTURE PROVISIONING
-  # Only happens for main branch deployment
   # =========================================================
 
   infrastructure:
@@ -168,9 +229,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # -------------------------
+      # -----------------------------------------------------
       # Azure OIDC Authentication
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Azure Login
         uses: azure/login@v3
@@ -196,9 +257,9 @@ jobs:
             --name "$RESOURCE_GROUP" \
             --location "$LOCATION"
 
-      # -------------------------
+      # -----------------------------------------------------
       # Azure Container Registry
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Provision Azure Container Registry
         shell: bash
@@ -218,9 +279,9 @@ jobs:
                 --sku Basic
           fi
 
-      # -------------------------
+      # -----------------------------------------------------
       # Azure Container Apps Environment
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Install Container Apps extension
         run: |
@@ -305,11 +366,35 @@ jobs:
             image: eshop-webhook-client
             dockerfile: src/WebhookClient/Dockerfile
 
-
     steps:
 
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # -----------------------------------------------------
+      # Find application directory
+      # -----------------------------------------------------
+
+      - name: Find eShop solution
+        shell: bash
+        run: |
+          SOLUTION_PATH=$(find "$GITHUB_WORKSPACE" \
+            -type f \
+            -name "eShop.slnx" \
+            -print \
+            -quit)
+
+          if [ -z "$SOLUTION_PATH" ]; then
+            echo "ERROR: eShop.slnx was not found."
+            exit 1
+          fi
+
+          APP_ROOT=$(dirname "$SOLUTION_PATH")
+
+          echo "Application root:"
+          echo "$APP_ROOT"
+
+          echo "APP_ROOT=$APP_ROOT" >> "$GITHUB_ENV"
 
       - name: Azure Login
         uses: azure/login@v3
@@ -318,9 +403,9 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # -------------------------
+      # -----------------------------------------------------
       # Registry Authentication
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Login to Azure Container Registry
         run: |
@@ -332,21 +417,24 @@ jobs:
           "IMAGE=${ACR_NAME}.azurecr.io/${{ matrix.image }}:${GITHUB_SHA}" \
           >> "$GITHUB_ENV"
 
-      # -------------------------
+      # -----------------------------------------------------
       # Containerization
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Build Docker image
-        working-directory: application/eShop
+        working-directory: ${{ env.APP_ROOT }}
         run: |
+          echo "Building ${{ matrix.app }}"
+          echo "Dockerfile: ${{ matrix.dockerfile }}"
+
           docker build \
             -f "${{ matrix.dockerfile }}" \
             -t "$IMAGE" \
             .
 
-      # -------------------------
+      # -----------------------------------------------------
       # Container Security Scan
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Scan Docker image with Trivy
         uses: aquasecurity/trivy-action@v0.36.0
@@ -357,9 +445,9 @@ jobs:
           ignore-unfixed: true
           severity: "CRITICAL,HIGH"
 
-      # -------------------------
+      # -----------------------------------------------------
       # Artifact Uploading → ACR
-      # -------------------------
+      # -----------------------------------------------------
 
       - name: Push image to Azure Container Registry
         run: |
@@ -420,7 +508,6 @@ jobs:
           - app: webhook-client
             image: eshop-webhook-client
             ingress: external
-
 
     steps:
 
