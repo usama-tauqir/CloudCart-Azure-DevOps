@@ -94,52 +94,110 @@ jobs:
           dotnet --info
 
       # -----------------------------------------------------
-      # Dependency Installation
+      # Backend-only dependency installation
+      # MAUI projects are intentionally excluded on Ubuntu.
       # -----------------------------------------------------
 
-      - name: Restore dependencies
+      - name: Restore backend dependencies
         working-directory: ${{ env.APP_ROOT }}
+        shell: bash
         run: |
-          dotnet restore eShop.slnx -p:TargetFramework=net10.0 -p:TargetFramework=net10.0
+          set -e
+    PROJECTS=(
+      "src/Catalog.API/Catalog.API.csproj"
+      "src/Basket.API/Basket.API.csproj"
+      "src/Ordering.API/Ordering.API.csproj"
+      "src/Identity.API/Identity.API.csproj"
+      "src/Webhooks.API/Webhooks.API.csproj"
+      "src/OrderProcessor/OrderProcessor.csproj"
+      "src/PaymentProcessor/PaymentProcessor.csproj"
+      "src/WebApp/WebApp.csproj"
+      "src/WebhookClient/WebhookClient.csproj"
+    )
+          for project in "${PROJECTS[@]}"; do
+            echo "Restoring $project"
+            dotnet restore "$project"
+          done
 
       # -----------------------------------------------------
-      # Dependency Security Scan
+      # Dependency Security Scan - backend only
       # -----------------------------------------------------
 
-      - name: Scan NuGet dependencies
+      - name: Scan backend NuGet dependencies
         working-directory: ${{ env.APP_ROOT }}
+        shell: bash
         run: |
-          dotnet list eShop.slnx package \
-            --framework net10.0 \
-            --vulnerable \
-            --include-transitive \
-            | tee dependency-audit.txt
+          set -e
+          : > dependency-audit.txt
+    PROJECTS=(
+      "src/Catalog.API/Catalog.API.csproj"
+      "src/Basket.API/Basket.API.csproj"
+      "src/Ordering.API/Ordering.API.csproj"
+      "src/Identity.API/Identity.API.csproj"
+      "src/Webhooks.API/Webhooks.API.csproj"
+      "src/OrderProcessor/OrderProcessor.csproj"
+      "src/PaymentProcessor/PaymentProcessor.csproj"
+      "src/WebApp/WebApp.csproj"
+      "src/WebhookClient/WebhookClient.csproj"
+    )
+          for project in "${PROJECTS[@]}"; do
+            echo "Scanning $project" | tee -a dependency-audit.txt
+            dotnet list "$project" package --vulnerable --include-transitive | tee -a dependency-audit.txt
+          done
 
       # -----------------------------------------------------
-      # Automated Unit Testing
+      # Automated Unit Testing - exclude MAUI-dependent tests
       # -----------------------------------------------------
 
-      - name: Run tests
+      - name: Run backend tests
         working-directory: ${{ env.APP_ROOT }}
+        shell: bash
         run: |
-          dotnet test eShop.slnx \
-            --framework net10.0 \
-            --configuration Release \
-            --no-restore \
-            --logger "trx" \
-            --results-directory TestResults
+          set -e
+          mapfile -d '' TEST_PROJECTS < <(
+            find tests -type f \( -name "*Tests.csproj" -o -name "*Test.csproj" \) \
+              ! -path "*/ClientApp.UnitTests/*" \
+              ! -path "*/HybridApp*/*" \
+              -print0
+          )
+
+          if [ "${#TEST_PROJECTS[@]}" -eq 0 ]; then
+            echo "No backend test projects found."
+            exit 0
+          fi
+
+          for project in "${TEST_PROJECTS[@]}"; do
+            echo "Testing $project"
+            dotnet test "$project" \
+              --configuration Release \
+              --logger "trx" \
+              --results-directory TestResults
+          done
 
       # -----------------------------------------------------
-      # Code Compilation
+      # Backend compilation
       # -----------------------------------------------------
 
-      - name: Build solution
+      - name: Build backend projects
         working-directory: ${{ env.APP_ROOT }}
+        shell: bash
         run: |
-          dotnet build eShop.slnx \
-            --framework net10.0 \
-            --configuration Release \
-            --no-restore
+          set -e
+    PROJECTS=(
+      "src/Catalog.API/Catalog.API.csproj"
+      "src/Basket.API/Basket.API.csproj"
+      "src/Ordering.API/Ordering.API.csproj"
+      "src/Identity.API/Identity.API.csproj"
+      "src/Webhooks.API/Webhooks.API.csproj"
+      "src/OrderProcessor/OrderProcessor.csproj"
+      "src/PaymentProcessor/PaymentProcessor.csproj"
+      "src/WebApp/WebApp.csproj"
+      "src/WebhookClient/WebhookClient.csproj"
+    )
+          for project in "${PROJECTS[@]}"; do
+            echo "Building $project"
+            dotnet build "$project" --configuration Release --no-restore
+          done
 
       # -----------------------------------------------------
       # Test Artifacts
@@ -228,25 +286,32 @@ jobs:
           languages: csharp
 
       # -----------------------------------------------------
-      # Restore NuGet packages
+      # Restore and build backend projects only for CodeQL
       # -----------------------------------------------------
 
-      - name: Restore dependencies for CodeQL
+      - name: Restore and build backend projects for CodeQL
         working-directory: ${{ env.APP_ROOT }}
+        shell: bash
         run: |
-          dotnet restore eShop.slnx
+          set -e
+    PROJECTS=(
+      "src/Catalog.API/Catalog.API.csproj"
+      "src/Basket.API/Basket.API.csproj"
+      "src/Ordering.API/Ordering.API.csproj"
+      "src/Identity.API/Identity.API.csproj"
+      "src/Webhooks.API/Webhooks.API.csproj"
+      "src/OrderProcessor/OrderProcessor.csproj"
+      "src/PaymentProcessor/PaymentProcessor.csproj"
+      "src/WebApp/WebApp.csproj"
+      "src/WebhookClient/WebhookClient.csproj"
+    )
+          for project in "${PROJECTS[@]}"; do
+            echo "Restoring $project"
+            dotnet restore "$project"
 
-      # -----------------------------------------------------
-      # Build application for CodeQL
-      # -----------------------------------------------------
-
-      - name: Build for CodeQL
-        working-directory: ${{ env.APP_ROOT }}
-        run: |
-          dotnet build eShop.slnx \
-            --framework net10.0 \
-            --configuration Release \
-            --no-restore
+            echo "Building $project"
+            dotnet build "$project" --configuration Release --no-restore
+          done
 
       # -----------------------------------------------------
       # Analyze
