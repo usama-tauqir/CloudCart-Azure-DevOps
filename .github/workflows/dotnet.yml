@@ -170,8 +170,7 @@ jobs:
             echo "Testing $project"
             dotnet test "$project" \
               --configuration Release \
-              --results-directory TestResults \
-              -- --report-xunit-trx
+              --results-directory TestResults
           done
 
       # -----------------------------------------------------
