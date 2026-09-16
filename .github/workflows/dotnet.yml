@@ -95,7 +95,7 @@ jobs:
 
       # -----------------------------------------------------
       # Backend-only dependency installation
-      # MAUI projects are intentionally excluded on Ubuntu.
+      # MAUI projects are intentionally excluded on Ubuntu
       # -----------------------------------------------------
 
       - name: Restore backend dependencies
@@ -122,7 +122,7 @@ jobs:
           done
 
       # -----------------------------------------------------
-      # Dependency Security Scan - backend only
+      # Dependency Security Scan
       # -----------------------------------------------------
 
       - name: Scan backend NuGet dependencies
@@ -147,13 +147,14 @@ jobs:
 
           for project in "${PROJECTS[@]}"; do
             echo "Scanning $project" | tee -a dependency-audit.txt
+
             dotnet list "$project" package \
               --vulnerable \
               --include-transitive | tee -a dependency-audit.txt
           done
 
       # -----------------------------------------------------
-      # Automated Unit Testing - exclude MAUI-dependent tests
+      # Automated Unit Testing
       # -----------------------------------------------------
 
       - name: Run backend tests
@@ -184,7 +185,7 @@ jobs:
           done
 
       # -----------------------------------------------------
-      # Backend compilation
+      # Backend Compilation
       # -----------------------------------------------------
 
       - name: Build backend projects
@@ -244,16 +245,8 @@ jobs:
 
     steps:
 
-      # -----------------------------------------------------
-      # Checkout
-      # -----------------------------------------------------
-
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      # -----------------------------------------------------
-      # Locate eShop solution automatically
-      # -----------------------------------------------------
 
       - name: Find eShop solution
         shell: bash
@@ -281,27 +274,15 @@ jobs:
 
           echo "APP_ROOT=$APP_ROOT" >> "$GITHUB_ENV"
 
-      # -----------------------------------------------------
-      # .NET SDK
-      # -----------------------------------------------------
-
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
 
-      # -----------------------------------------------------
-      # Initialize CodeQL BEFORE build
-      # -----------------------------------------------------
-
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: csharp
-
-      # -----------------------------------------------------
-      # Restore and build backend projects only for CodeQL
-      # -----------------------------------------------------
 
       - name: Restore and build backend projects for CodeQL
         working-directory: ${{ env.APP_ROOT }}
@@ -326,14 +307,11 @@ jobs:
             dotnet restore "$project"
 
             echo "Building $project"
+
             dotnet build "$project" \
               --configuration Release \
               --no-restore
           done
-
-      # -----------------------------------------------------
-      # Analyze
-      # -----------------------------------------------------
 
       - name: Analyze source code
         uses: github/codeql-action/analyze@v3
@@ -341,8 +319,6 @@ jobs:
 
   # =========================================================
   # 3. INFRASTRUCTURE PROVISIONING
-  # Only runs after CI + CodeQL pass
-  # Only deploys from main branch
   # =========================================================
 
   infrastructure:
@@ -365,7 +341,6 @@ jobs:
 
       # -----------------------------------------------------
       # Azure OIDC Authentication
-      # FIXED: Using repository variables
       # -----------------------------------------------------
 
       - name: Azure Login
@@ -382,34 +357,42 @@ jobs:
       - name: Verify Azure Login
         run: |
           echo "Azure authentication successful."
+
           az account show \
-            --query "{subscription:name, subscriptionId:id, tenantId:tenantId}" \
+            --query "{Subscription:name,SubscriptionId:id,TenantId:tenantId}" \
             --output table
 
       # -----------------------------------------------------
-      # Register Azure Resource Providers
+      # IMPORTANT:
+      # Azure Resource Provider registration removed.
+      #
+      # Register these manually once in Azure:
+      # Microsoft.ContainerRegistry
+      # Microsoft.App
+      # Microsoft.OperationalInsights
       # -----------------------------------------------------
-
-      - name: Register Azure providers
-        run: |
-          az provider register \
-            --namespace Microsoft.ContainerRegistry
-
-          az provider register \
-            --namespace Microsoft.App
-
-          az provider register \
-            --namespace Microsoft.OperationalInsights
 
       # -----------------------------------------------------
       # Resource Group
       # -----------------------------------------------------
 
       - name: Create Resource Group if missing
+        shell: bash
         run: |
-          az group create \
-            --name "$RESOURCE_GROUP" \
-            --location "$LOCATION"
+          echo "Checking resource group: $RESOURCE_GROUP"
+
+          if az group show \
+              --name "$RESOURCE_GROUP" \
+              >/dev/null 2>&1
+          then
+            echo "Resource Group already exists."
+          else
+            echo "Creating Resource Group..."
+
+            az group create \
+              --name "$RESOURCE_GROUP" \
+              --location "$LOCATION"
+          fi
 
       # -----------------------------------------------------
       # Azure Container Registry
@@ -423,18 +406,18 @@ jobs:
               --resource-group "$RESOURCE_GROUP" \
               >/dev/null 2>&1
           then
-              echo "ACR already exists."
+            echo "ACR already exists."
           else
-              echo "Creating ACR..."
+            echo "Creating ACR..."
 
-              az acr create \
-                --resource-group "$RESOURCE_GROUP" \
-                --name "$ACR_NAME" \
-                --sku Basic
+            az acr create \
+              --resource-group "$RESOURCE_GROUP" \
+              --name "$ACR_NAME" \
+              --sku Basic
           fi
 
       # -----------------------------------------------------
-      # Azure Container Apps CLI extension
+      # Azure Container Apps CLI Extension
       # -----------------------------------------------------
 
       - name: Install Container Apps extension
@@ -455,14 +438,14 @@ jobs:
               --resource-group "$RESOURCE_GROUP" \
               >/dev/null 2>&1
           then
-              echo "Container Apps environment already exists."
+            echo "Container Apps environment already exists."
           else
-              echo "Creating Container Apps environment..."
+            echo "Creating Container Apps environment..."
 
-              az containerapp env create \
-                --name "$ACA_ENVIRONMENT" \
-                --resource-group "$RESOURCE_GROUP" \
-                --location "$LOCATION"
+            az containerapp env create \
+              --name "$ACA_ENVIRONMENT" \
+              --resource-group "$RESOURCE_GROUP" \
+              --location "$LOCATION"
           fi
 
 
@@ -526,16 +509,8 @@ jobs:
 
     steps:
 
-      # -----------------------------------------------------
-      # Checkout
-      # -----------------------------------------------------
-
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      # -----------------------------------------------------
-      # Locate application root
-      # -----------------------------------------------------
 
       - name: Find eShop solution
         shell: bash
@@ -563,7 +538,6 @@ jobs:
 
       # -----------------------------------------------------
       # Azure Authentication
-      # FIXED: Using repository variables
       # -----------------------------------------------------
 
       - name: Azure Login
@@ -574,7 +548,7 @@ jobs:
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       # -----------------------------------------------------
-      # Registry Authentication
+      # Azure Container Registry Authentication
       # -----------------------------------------------------
 
       - name: Login to Azure Container Registry
@@ -582,7 +556,7 @@ jobs:
           az acr login --name "$ACR_NAME"
 
       # -----------------------------------------------------
-      # Image Name
+      # Prepare Image Name
       # -----------------------------------------------------
 
       - name: Prepare image name
@@ -621,7 +595,7 @@ jobs:
           severity: "CRITICAL,HIGH"
 
       # -----------------------------------------------------
-      # Push Image → ACR
+      # Push Image to ACR
       # -----------------------------------------------------
 
       - name: Push image to Azure Container Registry
@@ -688,7 +662,6 @@ jobs:
 
       # -----------------------------------------------------
       # Azure Authentication
-      # FIXED: Using repository variables
       # -----------------------------------------------------
 
       - name: Azure Login
@@ -737,7 +710,6 @@ jobs:
 
       # -----------------------------------------------------
       # Azure Authentication
-      # FIXED: Using repository variables
       # -----------------------------------------------------
 
       - name: Azure Login
@@ -752,6 +724,7 @@ jobs:
       # -----------------------------------------------------
 
       - name: Get WebApp URL
+        shell: bash
         run: |
           WEBAPP_FQDN=$(az containerapp show \
             --name webapp \
@@ -774,6 +747,7 @@ jobs:
       # -----------------------------------------------------
 
       - name: Smoke test WebApp
+        shell: bash
         run: |
           for i in {1..12}
           do
@@ -820,9 +794,7 @@ jobs:
       - name: Notify Slack
         uses: slackapi/slack-github-action@v4.0.0
         with:
-
           webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
-
           webhook-type: incoming-webhook
 
           payload: |
