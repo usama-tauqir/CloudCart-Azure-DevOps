@@ -374,25 +374,9 @@ jobs:
 
       # -----------------------------------------------------
       # Resource Group
+      # rg-cloudcart-dev already exists and is managed in Azure.
+      # Creation is intentionally omitted from this workflow.
       # -----------------------------------------------------
-
-      - name: Create Resource Group if missing
-        shell: bash
-        run: |
-          echo "Checking resource group: $RESOURCE_GROUP"
-
-          if az group show \
-              --name "$RESOURCE_GROUP" \
-              >/dev/null 2>&1
-          then
-            echo "Resource Group already exists."
-          else
-            echo "Creating Resource Group..."
-
-            az group create \
-              --name "$RESOURCE_GROUP" \
-              --location "$LOCATION"
-          fi
 
       # -----------------------------------------------------
       # Azure Container Registry
