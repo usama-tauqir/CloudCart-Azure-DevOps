@@ -103,6 +103,7 @@ jobs:
         shell: bash
         run: |
           set -e
+
           PROJECTS=(
             "src/Catalog.API/Catalog.API.csproj"
             "src/Basket.API/Basket.API.csproj"
@@ -114,6 +115,7 @@ jobs:
             "src/WebApp/WebApp.csproj"
             "src/WebhookClient/WebhookClient.csproj"
           )
+
           for project in "${PROJECTS[@]}"; do
             echo "Restoring $project"
             dotnet restore "$project"
@@ -128,7 +130,9 @@ jobs:
         shell: bash
         run: |
           set -e
+
           : > dependency-audit.txt
+
           PROJECTS=(
             "src/Catalog.API/Catalog.API.csproj"
             "src/Basket.API/Basket.API.csproj"
@@ -140,9 +144,12 @@ jobs:
             "src/WebApp/WebApp.csproj"
             "src/WebhookClient/WebhookClient.csproj"
           )
+
           for project in "${PROJECTS[@]}"; do
             echo "Scanning $project" | tee -a dependency-audit.txt
-            dotnet list "$project" package --vulnerable --include-transitive | tee -a dependency-audit.txt
+            dotnet list "$project" package \
+              --vulnerable \
+              --include-transitive | tee -a dependency-audit.txt
           done
 
       # -----------------------------------------------------
@@ -154,8 +161,10 @@ jobs:
         shell: bash
         run: |
           set -e
+
           mapfile -d '' TEST_PROJECTS < <(
-            find tests -type f \( -name "*Tests.csproj" -o -name "*Test.csproj" \) \
+            find tests -type f \
+              \( -name "*Tests.csproj" -o -name "*Test.csproj" \) \
               ! -path "*/ClientApp.UnitTests/*" \
               ! -path "*/HybridApp*/*" \
               -print0
@@ -168,6 +177,7 @@ jobs:
 
           for project in "${TEST_PROJECTS[@]}"; do
             echo "Testing $project"
+
             dotnet test "$project" \
               --configuration Release \
               --results-directory TestResults
@@ -182,6 +192,7 @@ jobs:
         shell: bash
         run: |
           set -e
+
           PROJECTS=(
             "src/Catalog.API/Catalog.API.csproj"
             "src/Basket.API/Basket.API.csproj"
@@ -193,9 +204,13 @@ jobs:
             "src/WebApp/WebApp.csproj"
             "src/WebhookClient/WebhookClient.csproj"
           )
+
           for project in "${PROJECTS[@]}"; do
             echo "Building $project"
-            dotnet build "$project" --configuration Release --no-restore
+
+            dotnet build "$project" \
+              --configuration Release \
+              --no-restore
           done
 
       # -----------------------------------------------------
@@ -293,6 +308,7 @@ jobs:
         shell: bash
         run: |
           set -e
+
           PROJECTS=(
             "src/Catalog.API/Catalog.API.csproj"
             "src/Basket.API/Basket.API.csproj"
@@ -304,12 +320,15 @@ jobs:
             "src/WebApp/WebApp.csproj"
             "src/WebhookClient/WebhookClient.csproj"
           )
+
           for project in "${PROJECTS[@]}"; do
             echo "Restoring $project"
             dotnet restore "$project"
 
             echo "Building $project"
-            dotnet build "$project" --configuration Release --no-restore
+            dotnet build "$project" \
+              --configuration Release \
+              --no-restore
           done
 
       # -----------------------------------------------------
@@ -346,14 +365,26 @@ jobs:
 
       # -----------------------------------------------------
       # Azure OIDC Authentication
+      # FIXED: Using repository variables
       # -----------------------------------------------------
 
       - name: Azure Login
         uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      # -----------------------------------------------------
+      # Verify Azure Authentication
+      # -----------------------------------------------------
+
+      - name: Verify Azure Login
+        run: |
+          echo "Azure authentication successful."
+          az account show \
+            --query "{subscription:name, subscriptionId:id, tenantId:tenantId}" \
+            --output table
 
       # -----------------------------------------------------
       # Register Azure Resource Providers
@@ -532,14 +563,15 @@ jobs:
 
       # -----------------------------------------------------
       # Azure Authentication
+      # FIXED: Using repository variables
       # -----------------------------------------------------
 
       - name: Azure Login
         uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       # -----------------------------------------------------
       # Registry Authentication
@@ -656,14 +688,15 @@ jobs:
 
       # -----------------------------------------------------
       # Azure Authentication
+      # FIXED: Using repository variables
       # -----------------------------------------------------
 
       - name: Azure Login
         uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       # -----------------------------------------------------
       # Deploy to Azure Container Apps
@@ -704,14 +737,15 @@ jobs:
 
       # -----------------------------------------------------
       # Azure Authentication
+      # FIXED: Using repository variables
       # -----------------------------------------------------
 
       - name: Azure Login
         uses: azure/login@v3
         with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
       # -----------------------------------------------------
       # Obtain WebApp URL
