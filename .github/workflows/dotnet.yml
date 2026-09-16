@@ -35,11 +35,15 @@ jobs:
 
     steps:
 
+      # -----------------------------------------------------
+      # Checkout
+      # -----------------------------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # -----------------------------------------------------
-      # Automatically locate eShop.slnx
+      # Locate eShop solution automatically
       # -----------------------------------------------------
 
       - name: Find eShop solution
@@ -58,8 +62,10 @@ jobs:
 
           if [ -z "$SOLUTION_PATH" ]; then
             echo "ERROR: eShop.slnx was not found."
+
             echo "Repository structure:"
             find "$GITHUB_WORKSPACE" -maxdepth 4 -type d
+
             exit 1
           fi
 
@@ -73,10 +79,29 @@ jobs:
 
           echo "APP_ROOT=$APP_ROOT" >> "$GITHUB_ENV"
 
+      # -----------------------------------------------------
+      # .NET SDK
+      # -----------------------------------------------------
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+
+      - name: Show .NET information
+        run: |
+          dotnet --version
+          dotnet --info
+
+      # -----------------------------------------------------
+      # Restore required .NET workloads
+      # MAUI/Tizen etc.
+      # -----------------------------------------------------
+
+      - name: Restore .NET workloads
+        working-directory: ${{ env.APP_ROOT }}
+        run: |
+          dotnet workload restore eShop.slnx
 
       # -----------------------------------------------------
       # Dependency Installation
@@ -84,7 +109,8 @@ jobs:
 
       - name: Restore dependencies
         working-directory: ${{ env.APP_ROOT }}
-        run: dotnet restore eShop.slnx
+        run: |
+          dotnet restore eShop.slnx
 
       # -----------------------------------------------------
       # Dependency Security Scan
@@ -153,8 +179,16 @@ jobs:
 
     steps:
 
+      # -----------------------------------------------------
+      # Checkout
+      # -----------------------------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # -----------------------------------------------------
+      # Locate eShop solution automatically
+      # -----------------------------------------------------
 
       - name: Find eShop solution
         shell: bash
@@ -182,19 +216,45 @@ jobs:
 
           echo "APP_ROOT=$APP_ROOT" >> "$GITHUB_ENV"
 
+      # -----------------------------------------------------
+      # .NET SDK
+      # -----------------------------------------------------
+
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
+
+      # -----------------------------------------------------
+      # Initialize CodeQL BEFORE build
+      # -----------------------------------------------------
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: csharp
 
-      - name: Restore
+      # -----------------------------------------------------
+      # Restore workloads
+      # -----------------------------------------------------
+
+      - name: Restore .NET workloads
         working-directory: ${{ env.APP_ROOT }}
-        run: dotnet restore eShop.slnx
+        run: |
+          dotnet workload restore eShop.slnx
+
+      # -----------------------------------------------------
+      # Restore NuGet packages
+      # -----------------------------------------------------
+
+      - name: Restore dependencies for CodeQL
+        working-directory: ${{ env.APP_ROOT }}
+        run: |
+          dotnet restore eShop.slnx
+
+      # -----------------------------------------------------
+      # Build application for CodeQL
+      # -----------------------------------------------------
 
       - name: Build for CodeQL
         working-directory: ${{ env.APP_ROOT }}
@@ -203,12 +263,18 @@ jobs:
             --configuration Release \
             --no-restore
 
+      # -----------------------------------------------------
+      # Analyze
+      # -----------------------------------------------------
+
       - name: Analyze source code
         uses: github/codeql-action/analyze@v3
 
 
   # =========================================================
   # 3. INFRASTRUCTURE PROVISIONING
+  # Only runs after CI + CodeQL pass
+  # Only deploys from main branch
   # =========================================================
 
   infrastructure:
@@ -240,6 +306,10 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # -----------------------------------------------------
+      # Register Azure Resource Providers
+      # -----------------------------------------------------
+
       - name: Register Azure providers
         run: |
           az provider register \
@@ -250,6 +320,10 @@ jobs:
 
           az provider register \
             --namespace Microsoft.OperationalInsights
+
+      # -----------------------------------------------------
+      # Resource Group
+      # -----------------------------------------------------
 
       - name: Create Resource Group if missing
         run: |
@@ -280,7 +354,7 @@ jobs:
           fi
 
       # -----------------------------------------------------
-      # Azure Container Apps Environment
+      # Azure Container Apps CLI extension
       # -----------------------------------------------------
 
       - name: Install Container Apps extension
@@ -288,6 +362,10 @@ jobs:
           az extension add \
             --name containerapp \
             --upgrade
+
+      # -----------------------------------------------------
+      # Container Apps Environment
+      # -----------------------------------------------------
 
       - name: Provision Container Apps Environment
         shell: bash
@@ -368,11 +446,15 @@ jobs:
 
     steps:
 
+      # -----------------------------------------------------
+      # Checkout
+      # -----------------------------------------------------
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       # -----------------------------------------------------
-      # Find application directory
+      # Locate application root
       # -----------------------------------------------------
 
       - name: Find eShop solution
@@ -391,10 +473,17 @@ jobs:
 
           APP_ROOT=$(dirname "$SOLUTION_PATH")
 
+          echo "Solution:"
+          echo "$SOLUTION_PATH"
+
           echo "Application root:"
           echo "$APP_ROOT"
 
           echo "APP_ROOT=$APP_ROOT" >> "$GITHUB_ENV"
+
+      # -----------------------------------------------------
+      # Azure Authentication
+      # -----------------------------------------------------
 
       - name: Azure Login
         uses: azure/login@v3
@@ -411,6 +500,10 @@ jobs:
         run: |
           az acr login --name "$ACR_NAME"
 
+      # -----------------------------------------------------
+      # Image Name
+      # -----------------------------------------------------
+
       - name: Prepare image name
         run: |
           echo \
@@ -418,14 +511,15 @@ jobs:
           >> "$GITHUB_ENV"
 
       # -----------------------------------------------------
-      # Containerization
+      # Docker Build
       # -----------------------------------------------------
 
       - name: Build Docker image
         working-directory: ${{ env.APP_ROOT }}
         run: |
-          echo "Building ${{ matrix.app }}"
+          echo "Building application: ${{ matrix.app }}"
           echo "Dockerfile: ${{ matrix.dockerfile }}"
+          echo "Image: $IMAGE"
 
           docker build \
             -f "${{ matrix.dockerfile }}" \
@@ -446,7 +540,7 @@ jobs:
           severity: "CRITICAL,HIGH"
 
       # -----------------------------------------------------
-      # Artifact Uploading → ACR
+      # Push Image → ACR
       # -----------------------------------------------------
 
       - name: Push image to Azure Container Registry
@@ -511,12 +605,20 @@ jobs:
 
     steps:
 
+      # -----------------------------------------------------
+      # Azure Authentication
+      # -----------------------------------------------------
+
       - name: Azure Login
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # -----------------------------------------------------
+      # Deploy to Azure Container Apps
+      # -----------------------------------------------------
 
       - name: Deploy Container App
         uses: azure/container-apps-deploy-action@v2
@@ -538,7 +640,7 @@ jobs:
 
 
   # =========================================================
-  # 6. SMOKE TEST
+  # 6. PRODUCTION SMOKE TEST
   # =========================================================
 
   smoke-test:
@@ -551,12 +653,20 @@ jobs:
 
     steps:
 
+      # -----------------------------------------------------
+      # Azure Authentication
+      # -----------------------------------------------------
+
       - name: Azure Login
         uses: azure/login@v3
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # -----------------------------------------------------
+      # Obtain WebApp URL
+      # -----------------------------------------------------
 
       - name: Get WebApp URL
         run: |
@@ -566,9 +676,19 @@ jobs:
             --query properties.configuration.ingress.fqdn \
             --output tsv)
 
+          if [ -z "$WEBAPP_FQDN" ]; then
+            echo "ERROR: WebApp FQDN could not be determined."
+            exit 1
+          fi
+
           echo "WEBAPP_URL=https://${WEBAPP_FQDN}" >> "$GITHUB_ENV"
 
-          echo "Testing https://${WEBAPP_FQDN}"
+          echo "Testing:"
+          echo "https://${WEBAPP_FQDN}"
+
+      # -----------------------------------------------------
+      # Smoke Test
+      # -----------------------------------------------------
 
       - name: Smoke test WebApp
         run: |
