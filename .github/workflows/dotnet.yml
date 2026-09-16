@@ -736,80 +736,77 @@ jobs:
             --output tsv)
 
           if [ -z "$IDENTITY_ID" ]; then
-            echo "ERROR: Managed identity $IDENTITY_NAME was not found."
+            echo "ERROR: Managed identity not found."
             exit 1
           fi
 
           IMAGE="${ACR_NAME}.azurecr.io/${{ matrix.image }}:${GITHUB_SHA}"
 
-          echo "Deploying ${{ matrix.app }}"
+          echo "================================="
+          echo "Deploying: ${{ matrix.app }}"
           echo "Image: $IMAGE"
-          echo "Ingress: ${{ matrix.ingress }}"
+          echo "================================="
+
+          echo "Checking existing Container App..."
 
           if az containerapp show \
               --name "${{ matrix.app }}" \
               --resource-group "$RESOURCE_GROUP" \
               >/dev/null 2>&1
           then
-            echo "Container App exists. Configuring ACR authentication..."
 
-            az containerapp identity assign \
+            STATE=$(az containerapp show \
               --name "${{ matrix.app }}" \
               --resource-group "$RESOURCE_GROUP" \
-              --user-assigned "$IDENTITY_ID" \
-              --output none
+              --query properties.provisioningState \
+              --output tsv)
 
-            az containerapp registry set \
-              --name "${{ matrix.app }}" \
-              --resource-group "$RESOURCE_GROUP" \
-              --server "${ACR_NAME}.azurecr.io" \
-              --identity "$IDENTITY_ID" \
-              --output none
+            echo "Current state: $STATE"
 
-            az containerapp update \
-              --name "${{ matrix.app }}" \
-              --resource-group "$RESOURCE_GROUP" \
-              --image "$IMAGE" \
-              --output none
+            if [ "$STATE" = "Failed" ]; then
 
-            if [ "${{ matrix.ingress }}" != "disabled" ]; then
-              az containerapp ingress enable \
+              echo "Deleting failed Container App..."
+
+              az containerapp delete \
                 --name "${{ matrix.app }}" \
                 --resource-group "$RESOURCE_GROUP" \
-                --type "${{ matrix.ingress }}" \
-                --target-port 8080 \
-                --transport auto \
-                --output none
-            fi
-          else
-            echo "Creating Container App with managed-identity ACR authentication..."
+                --yes
 
-            if [ "${{ matrix.ingress }}" = "disabled" ]; then
-              az containerapp create \
-                --name "${{ matrix.app }}" \
-                --resource-group "$RESOURCE_GROUP" \
-                --environment "$ACA_ENVIRONMENT" \
-                --image "$IMAGE" \
-                --user-assigned "$IDENTITY_ID" \
-                --registry-server "${ACR_NAME}.azurecr.io" \
-                --registry-identity "$IDENTITY_ID" \
-                --output none
-            else
-              az containerapp create \
-                --name "${{ matrix.app }}" \
-                --resource-group "$RESOURCE_GROUP" \
-                --environment "$ACA_ENVIRONMENT" \
-                --image "$IMAGE" \
-                --user-assigned "$IDENTITY_ID" \
-                --registry-server "${ACR_NAME}.azurecr.io" \
-                --registry-identity "$IDENTITY_ID" \
-                --ingress "${{ matrix.ingress }}" \
-                --target-port 8080 \
-                --output none
+              sleep 30
+
             fi
           fi
 
+          echo "Creating Container App..."
+
+          if [ "${{ matrix.ingress }}" = "disabled" ]; then
+
+            az containerapp create \
+              --name "${{ matrix.app }}" \
+              --resource-group "$RESOURCE_GROUP" \
+              --environment "$ACA_ENVIRONMENT" \
+              --image "$IMAGE" \
+              --user-assigned "$IDENTITY_ID" \
+              --registry-server "${ACR_NAME}.azurecr.io" \
+              --registry-identity "$IDENTITY_ID"
+
+          else
+
+            az containerapp create \
+              --name "${{ matrix.app }}" \
+              --resource-group "$RESOURCE_GROUP" \
+              --environment "$ACA_ENVIRONMENT" \
+              --image "$IMAGE" \
+              --user-assigned "$IDENTITY_ID" \
+              --registry-server "${ACR_NAME}.azurecr.io" \
+              --registry-identity "$IDENTITY_ID" \
+              --ingress "${{ matrix.ingress }}" \
+              --target-port 8080
+
+          fi
+
           echo "Deployment completed for ${{ matrix.app }}."
+
 
 
 
