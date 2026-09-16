@@ -103,17 +103,17 @@ jobs:
         shell: bash
         run: |
           set -e
-    PROJECTS=(
-      "src/Catalog.API/Catalog.API.csproj"
-      "src/Basket.API/Basket.API.csproj"
-      "src/Ordering.API/Ordering.API.csproj"
-      "src/Identity.API/Identity.API.csproj"
-      "src/Webhooks.API/Webhooks.API.csproj"
-      "src/OrderProcessor/OrderProcessor.csproj"
-      "src/PaymentProcessor/PaymentProcessor.csproj"
-      "src/WebApp/WebApp.csproj"
-      "src/WebhookClient/WebhookClient.csproj"
-    )
+          PROJECTS=(
+            "src/Catalog.API/Catalog.API.csproj"
+            "src/Basket.API/Basket.API.csproj"
+            "src/Ordering.API/Ordering.API.csproj"
+            "src/Identity.API/Identity.API.csproj"
+            "src/Webhooks.API/Webhooks.API.csproj"
+            "src/OrderProcessor/OrderProcessor.csproj"
+            "src/PaymentProcessor/PaymentProcessor.csproj"
+            "src/WebApp/WebApp.csproj"
+            "src/WebhookClient/WebhookClient.csproj"
+          )
           for project in "${PROJECTS[@]}"; do
             echo "Restoring $project"
             dotnet restore "$project"
@@ -129,17 +129,17 @@ jobs:
         run: |
           set -e
           : > dependency-audit.txt
-    PROJECTS=(
-      "src/Catalog.API/Catalog.API.csproj"
-      "src/Basket.API/Basket.API.csproj"
-      "src/Ordering.API/Ordering.API.csproj"
-      "src/Identity.API/Identity.API.csproj"
-      "src/Webhooks.API/Webhooks.API.csproj"
-      "src/OrderProcessor/OrderProcessor.csproj"
-      "src/PaymentProcessor/PaymentProcessor.csproj"
-      "src/WebApp/WebApp.csproj"
-      "src/WebhookClient/WebhookClient.csproj"
-    )
+          PROJECTS=(
+            "src/Catalog.API/Catalog.API.csproj"
+            "src/Basket.API/Basket.API.csproj"
+            "src/Ordering.API/Ordering.API.csproj"
+            "src/Identity.API/Identity.API.csproj"
+            "src/Webhooks.API/Webhooks.API.csproj"
+            "src/OrderProcessor/OrderProcessor.csproj"
+            "src/PaymentProcessor/PaymentProcessor.csproj"
+            "src/WebApp/WebApp.csproj"
+            "src/WebhookClient/WebhookClient.csproj"
+          )
           for project in "${PROJECTS[@]}"; do
             echo "Scanning $project" | tee -a dependency-audit.txt
             dotnet list "$project" package --vulnerable --include-transitive | tee -a dependency-audit.txt
@@ -183,17 +183,17 @@ jobs:
         shell: bash
         run: |
           set -e
-    PROJECTS=(
-      "src/Catalog.API/Catalog.API.csproj"
-      "src/Basket.API/Basket.API.csproj"
-      "src/Ordering.API/Ordering.API.csproj"
-      "src/Identity.API/Identity.API.csproj"
-      "src/Webhooks.API/Webhooks.API.csproj"
-      "src/OrderProcessor/OrderProcessor.csproj"
-      "src/PaymentProcessor/PaymentProcessor.csproj"
-      "src/WebApp/WebApp.csproj"
-      "src/WebhookClient/WebhookClient.csproj"
-    )
+          PROJECTS=(
+            "src/Catalog.API/Catalog.API.csproj"
+            "src/Basket.API/Basket.API.csproj"
+            "src/Ordering.API/Ordering.API.csproj"
+            "src/Identity.API/Identity.API.csproj"
+            "src/Webhooks.API/Webhooks.API.csproj"
+            "src/OrderProcessor/OrderProcessor.csproj"
+            "src/PaymentProcessor/PaymentProcessor.csproj"
+            "src/WebApp/WebApp.csproj"
+            "src/WebhookClient/WebhookClient.csproj"
+          )
           for project in "${PROJECTS[@]}"; do
             echo "Building $project"
             dotnet build "$project" --configuration Release --no-restore
@@ -294,17 +294,17 @@ jobs:
         shell: bash
         run: |
           set -e
-    PROJECTS=(
-      "src/Catalog.API/Catalog.API.csproj"
-      "src/Basket.API/Basket.API.csproj"
-      "src/Ordering.API/Ordering.API.csproj"
-      "src/Identity.API/Identity.API.csproj"
-      "src/Webhooks.API/Webhooks.API.csproj"
-      "src/OrderProcessor/OrderProcessor.csproj"
-      "src/PaymentProcessor/PaymentProcessor.csproj"
-      "src/WebApp/WebApp.csproj"
-      "src/WebhookClient/WebhookClient.csproj"
-    )
+          PROJECTS=(
+            "src/Catalog.API/Catalog.API.csproj"
+            "src/Basket.API/Basket.API.csproj"
+            "src/Ordering.API/Ordering.API.csproj"
+            "src/Identity.API/Identity.API.csproj"
+            "src/Webhooks.API/Webhooks.API.csproj"
+            "src/OrderProcessor/OrderProcessor.csproj"
+            "src/PaymentProcessor/PaymentProcessor.csproj"
+            "src/WebApp/WebApp.csproj"
+            "src/WebhookClient/WebhookClient.csproj"
+          )
           for project in "${PROJECTS[@]}"; do
             echo "Restoring $project"
             dotnet restore "$project"
