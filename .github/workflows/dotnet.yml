@@ -94,23 +94,13 @@ jobs:
           dotnet --info
 
       # -----------------------------------------------------
-      # Restore required .NET workloads
-      # MAUI/Tizen etc.
-      # -----------------------------------------------------
-
-      - name: Restore .NET workloads
-        working-directory: ${{ env.APP_ROOT }}
-        run: |
-          dotnet workload restore eShop.slnx
-
-      # -----------------------------------------------------
       # Dependency Installation
       # -----------------------------------------------------
 
       - name: Restore dependencies
         working-directory: ${{ env.APP_ROOT }}
         run: |
-          dotnet restore eShop.slnx
+          dotnet restore eShop.slnx -p:TargetFramework=net10.0 -p:TargetFramework=net10.0
 
       # -----------------------------------------------------
       # Dependency Security Scan
@@ -120,6 +110,7 @@ jobs:
         working-directory: ${{ env.APP_ROOT }}
         run: |
           dotnet list eShop.slnx package \
+            --framework net10.0 \
             --vulnerable \
             --include-transitive \
             | tee dependency-audit.txt
@@ -132,6 +123,7 @@ jobs:
         working-directory: ${{ env.APP_ROOT }}
         run: |
           dotnet test eShop.slnx \
+            --framework net10.0 \
             --configuration Release \
             --no-restore \
             --logger "trx" \
@@ -145,6 +137,7 @@ jobs:
         working-directory: ${{ env.APP_ROOT }}
         run: |
           dotnet build eShop.slnx \
+            --framework net10.0 \
             --configuration Release \
             --no-restore
 
@@ -235,15 +228,6 @@ jobs:
           languages: csharp
 
       # -----------------------------------------------------
-      # Restore workloads
-      # -----------------------------------------------------
-
-      - name: Restore .NET workloads
-        working-directory: ${{ env.APP_ROOT }}
-        run: |
-          dotnet workload restore eShop.slnx
-
-      # -----------------------------------------------------
       # Restore NuGet packages
       # -----------------------------------------------------
 
@@ -260,6 +244,7 @@ jobs:
         working-directory: ${{ env.APP_ROOT }}
         run: |
           dotnet build eShop.slnx \
+            --framework net10.0 \
             --configuration Release \
             --no-restore
 
