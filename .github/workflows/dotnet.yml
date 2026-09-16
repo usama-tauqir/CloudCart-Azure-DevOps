@@ -433,6 +433,50 @@ jobs:
           fi
 
 
+      # -----------------------------------------------------
+      # Managed identity used by Container Apps to pull ACR images
+      # -----------------------------------------------------
+
+      - name: Provision ACR pull managed identity
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IDENTITY_NAME="cloudcart-acr-pull"
+
+          if az identity show \
+              --name "$IDENTITY_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              >/dev/null 2>&1
+          then
+            echo "Managed identity already exists."
+          else
+            echo "Creating managed identity..."
+
+            az identity create \
+              --name "$IDENTITY_NAME" \
+              --resource-group "$RESOURCE_GROUP" \
+              --location "$LOCATION" \
+              --output none
+          fi
+
+          IDENTITY_ID=$(az identity show \
+            --name "$IDENTITY_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query id \
+            --output tsv)
+
+          PRINCIPAL_ID=$(az identity show \
+            --name "$IDENTITY_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query principalId \
+            --output tsv)
+
+          echo "Managed identity: $IDENTITY_ID"
+          echo "Principal ID: $PRINCIPAL_ID"
+          echo "IMPORTANT: cloudcart-acr-pull must have AcrPull on $ACR_NAME."
+
+
   # =========================================================
   # 4. CONTAINERIZATION + REGISTRY UPLOAD
   # =========================================================
@@ -659,23 +703,100 @@ jobs:
       # Deploy to Azure Container Apps
       # -----------------------------------------------------
 
+      - name: Install Container Apps extension
+        shell: bash
+        run: |
+          az extension add --name containerapp --upgrade
+
       - name: Deploy Container App
-        uses: azure/container-apps-deploy-action@v2
-        with:
-          acrName: ${{ vars.ACR_NAME }}
+        shell: bash
+        run: |
+          set -euo pipefail
 
-          containerAppName: ${{ matrix.app }}
+          IDENTITY_NAME="cloudcart-acr-pull"
 
-          containerAppEnvironment: ${{ vars.ACA_ENVIRONMENT }}
+          IDENTITY_ID=$(az identity show \
+            --name "$IDENTITY_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query id \
+            --output tsv)
 
-          resourceGroup: ${{ vars.AZURE_RESOURCE_GROUP }}
+          if [ -z "$IDENTITY_ID" ]; then
+            echo "ERROR: Managed identity $IDENTITY_NAME was not found."
+            exit 1
+          fi
 
-          imageToDeploy: >
-            ${{ vars.ACR_NAME }}.azurecr.io/${{ matrix.image }}:${{ github.sha }}
+          IMAGE="${ACR_NAME}.azurecr.io/${{ matrix.image }}:${GITHUB_SHA}"
 
-          ingress: ${{ matrix.ingress }}
+          echo "Deploying ${{ matrix.app }}"
+          echo "Image: $IMAGE"
+          echo "Ingress: ${{ matrix.ingress }}"
 
-          targetPort: 8080
+          if az containerapp show \
+              --name "${{ matrix.app }}" \
+              --resource-group "$RESOURCE_GROUP" \
+              >/dev/null 2>&1
+          then
+            echo "Container App exists. Configuring ACR authentication..."
+
+            az containerapp identity assign \
+              --name "${{ matrix.app }}" \
+              --resource-group "$RESOURCE_GROUP" \
+              --user-assigned "$IDENTITY_ID" \
+              --output none
+
+            az containerapp registry set \
+              --name "${{ matrix.app }}" \
+              --resource-group "$RESOURCE_GROUP" \
+              --server "${ACR_NAME}.azurecr.io" \
+              --identity "$IDENTITY_ID" \
+              --output none
+
+            az containerapp update \
+              --name "${{ matrix.app }}" \
+              --resource-group "$RESOURCE_GROUP" \
+              --image "$IMAGE" \
+              --output none
+
+            if [ "${{ matrix.ingress }}" != "disabled" ]; then
+              az containerapp ingress enable \
+                --name "${{ matrix.app }}" \
+                --resource-group "$RESOURCE_GROUP" \
+                --type "${{ matrix.ingress }}" \
+                --target-port 8080 \
+                --transport auto \
+                --output none
+            fi
+          else
+            echo "Creating Container App with managed-identity ACR authentication..."
+
+            if [ "${{ matrix.ingress }}" = "disabled" ]; then
+              az containerapp create \
+                --name "${{ matrix.app }}" \
+                --resource-group "$RESOURCE_GROUP" \
+                --environment "$ACA_ENVIRONMENT" \
+                --image "$IMAGE" \
+                --user-assigned "$IDENTITY_ID" \
+                --registry-server "${ACR_NAME}.azurecr.io" \
+                --registry-identity "$IDENTITY_ID" \
+                --output none
+            else
+              az containerapp create \
+                --name "${{ matrix.app }}" \
+                --resource-group "$RESOURCE_GROUP" \
+                --environment "$ACA_ENVIRONMENT" \
+                --image "$IMAGE" \
+                --user-assigned "$IDENTITY_ID" \
+                --registry-server "${ACR_NAME}.azurecr.io" \
+                --registry-identity "$IDENTITY_ID" \
+                --ingress "${{ matrix.ingress }}" \
+                --target-port 8080 \
+                --output none
+            fi
+          fi
+
+          echo "Deployment completed for ${{ matrix.app }}."
+
 
 
   # =========================================================
