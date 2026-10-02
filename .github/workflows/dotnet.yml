@@ -327,9 +327,6 @@ jobs:
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
         run: |
-          echo "Starting SonarQube Cloud analysis..."
-          echo "Host: $SONAR_HOST_URL"
-          echo "Project: $SONAR_PROJECT_KEY"
           echo "Organization: $SONAR_ORGANIZATION"
 
           dotnet-sonarscanner begin \
