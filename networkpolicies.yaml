@@ -1,0 +1,163 @@
+# ============================================================
+# 1. Default deny all ingress + egress in eshop namespace
+#    (safe baseline — every pod starts isolated)
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: eshop
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+# ============================================================
+# 2. Allow DNS egress for everything (needed to resolve Services)
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: eshop
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+---
+# ============================================================
+# 3. FRONTEND (webapp) — ingress from NGINX, egress only to backend
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: webapp-policy
+  namespace: eshop
+spec:
+  podSelector:
+    matchLabels:
+      tier: frontend
+  policyTypes: [Ingress, Egress]
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # ONLY to backend APIs — NOT to postgres / redis / rabbitmq
+  - to:
+    - podSelector:
+        matchLabels:
+          tier: backend
+    ports:
+    - protocol: TCP
+      port: 8080
+---
+# ============================================================
+# 4. BACKEND APIs — accept from frontend + workers, talk to data tier
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: backend-policy
+  namespace: eshop
+spec:
+  podSelector:
+    matchLabels:
+      tier: backend
+  policyTypes: [Ingress, Egress]
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          tier: frontend
+    - podSelector:
+        matchLabels:
+          tier: worker
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  # To data tier
+  - to:
+    - podSelector:
+        matchLabels:
+          tier: data
+  # To other backends (service-to-service)
+  - to:
+    - podSelector:
+        matchLabels:
+          tier: backend
+  # To RabbitMQ for event publishing
+  - to:
+    - podSelector:
+        matchLabels:
+          tier: data
+    ports:
+    - protocol: TCP
+      port: 5672
+---
+# ============================================================
+# 5. WORKERS — accept nothing, talk to data tier
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: worker-policy
+  namespace: eshop
+spec:
+  podSelector:
+    matchLabels:
+      tier: worker
+  policyTypes: [Ingress, Egress]
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          tier: data
+---
+# ============================================================
+# 6. DATA TIER — accept ONLY from backend + workers
+#    ⚠️ This is the key Phase 9 requirement ⚠️
+# ============================================================
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: data-tier-policy
+  namespace: eshop
+spec:
+  podSelector:
+    matchLabels:
+      tier: data
+  policyTypes: [Ingress]
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          tier: backend
+    - podSelector:
+        matchLabels:
+          tier: worker
+    ports:
+    - protocol: TCP
+      port: 5432     # postgres
+    - protocol: TCP
+      port: 6379     # redis
+    - protocol: TCP
+      port: 5672     # rabbitmq amqp
+    - protocol: TCP
+      port: 15672    # rabbitmq mgmt

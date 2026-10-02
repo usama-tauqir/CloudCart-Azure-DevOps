@@ -1,0 +1,2136 @@
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: 39326fa639668b951abb26c6e7590a4f5458a64bc795267761554caa7defb663
+      cni.projectcalico.org/podIP: 192.168.53.252/32
+      cni.projectcalico.org/podIPs: 192.168.53.252/32
+    creationTimestamp: "2026-09-30T20:47:23Z"
+    generateName: eshop-basket-api-7485b765c9-
+    generation: 1
+    labels:
+      app: eshop-basket-api
+      pod-template-hash: 7485b765c9
+      tier: backend
+    name: eshop-basket-api-7485b765c9-dpmjk
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: eshop-basket-api-7485b765c9
+      uid: 43c49ed2-208b-4d1e-9806-b5a3d1b7610f
+    resourceVersion: "4684"
+    uid: 414208f5-a374-47fc-b2eb-59a65c1d7724
+  spec:
+    containers:
+    - env:
+      - name: ConnectionStrings__basket
+        value: redis:6379
+      - name: services__catalog-api__http__0
+        value: http://eshop-catalog-api
+      - name: services__basket-api__http__0
+        value: http://eshop-basket-api
+      - name: services__ordering-api__http__0
+        value: http://eshop-ordering-api
+      - name: services__identity-api__http__0
+        value: http://eshop-identity-api
+      envFrom:
+      - configMapRef:
+          name: eshop-config
+      image: eshopacr2026.azurecr.io/eshop-basket-api:v1
+      imagePullPolicy: IfNotPresent
+      name: app
+      ports:
+      - containerPort: 8080
+        protocol: TCP
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-c6lrp
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: acr-secret
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-c6lrp
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:59Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:59Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:59Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 128Mi
+      containerID: containerd://9252759fc2535561c36ebbb2754a11f93c9ffb39becda025554dcc55f420560c
+      image: eshopacr2026.azurecr.io/eshop-basket-api:v1
+      imageID: eshopacr2026.azurecr.io/eshop-basket-api@sha256:0403c7df556de2e691e0c849ef72a5faf1e2f4b281499bb5ad41627b83a32dbc
+      lastState:
+        terminated:
+          containerID: containerd://7a615e225412c37cf6225fdb65128875026ee0a47a7fd18b94e74489478560bf
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:24Z"
+      name: app
+      ready: true
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:54:58Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-c6lrp
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.252
+    podIPs:
+    - ip: 192.168.53.252
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:23Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: 7af250ba018a36f0c6c0261578164b72f01b8ab44ed7a7f99fb5f4f478ac8251
+      cni.projectcalico.org/podIP: 192.168.53.211/32
+      cni.projectcalico.org/podIPs: 192.168.53.211/32
+    creationTimestamp: "2026-09-30T20:47:23Z"
+    generateName: eshop-catalog-api-bd86f85-
+    generation: 1
+    labels:
+      app: eshop-catalog-api
+      pod-template-hash: bd86f85
+      tier: backend
+    name: eshop-catalog-api-bd86f85-d959h
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: eshop-catalog-api-bd86f85
+      uid: 05bbb07d-007a-4e81-bb8f-3847a17f0b79
+    resourceVersion: "4761"
+    uid: 0fc3a3d5-b75b-4f97-a233-9906af9822d6
+  spec:
+    containers:
+    - env:
+      - name: ConnectionStrings__catalog
+        value: Server=mssql;Database=CatalogDb;User Id=sa;Password=Pass@word1;TrustServerCertificate=true
+      - name: services__catalog-api__http__0
+        value: http://eshop-catalog-api
+      - name: services__basket-api__http__0
+        value: http://eshop-basket-api
+      - name: services__ordering-api__http__0
+        value: http://eshop-ordering-api
+      - name: services__identity-api__http__0
+        value: http://eshop-identity-api
+      envFrom:
+      - configMapRef:
+          name: eshop-config
+      image: eshopacr2026.azurecr.io/eshop-catalog-api:v1
+      imagePullPolicy: IfNotPresent
+      name: app
+      ports:
+      - containerPort: 8080
+        protocol: TCP
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-jhrkm
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: acr-secret
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-jhrkm
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 128Mi
+      containerID: containerd://4a0a20c9928c15dccc0f7a113d2f629aebaec196afba182ad7ebfbbf05fb328b
+      image: eshopacr2026.azurecr.io/eshop-catalog-api:v1
+      imageID: eshopacr2026.azurecr.io/eshop-catalog-api@sha256:3dc255a3248ef4cce38a2f680e13163e60426e540a1002f191dca1e7e487c351
+      lastState:
+        terminated:
+          containerID: containerd://5d9946296d21ee369e69fa9954fc8e92357b33133975a33127e5fd4111691b0f
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:24Z"
+      name: app
+      ready: true
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:55:01Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-jhrkm
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.211
+    podIPs:
+    - ip: 192.168.53.211
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:23Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: 98047d9938b27f846e428b2235f64d0475d9dfd0ee64f5e2752edd8d4d7bfa82
+      cni.projectcalico.org/podIP: 192.168.53.250/32
+      cni.projectcalico.org/podIPs: 192.168.53.250/32
+    creationTimestamp: "2026-09-30T20:47:23Z"
+    generateName: eshop-identity-api-5fcf5bd646-
+    generation: 1
+    labels:
+      app: eshop-identity-api
+      pod-template-hash: 5fcf5bd646
+      tier: backend
+    name: eshop-identity-api-5fcf5bd646-9rcsj
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: eshop-identity-api-5fcf5bd646
+      uid: 8d63d636-a830-4922-a25a-4e11c95f4240
+    resourceVersion: "4650"
+    uid: da5ddfd7-408f-4310-a7d4-454312a5fda5
+  spec:
+    containers:
+    - env:
+      - name: ConnectionStrings__identity
+        value: Data Source=/tmp/identity.db
+      - name: services__catalog-api__http__0
+        value: http://eshop-catalog-api
+      - name: services__basket-api__http__0
+        value: http://eshop-basket-api
+      - name: services__ordering-api__http__0
+        value: http://eshop-ordering-api
+      - name: services__identity-api__http__0
+        value: http://eshop-identity-api
+      envFrom:
+      - configMapRef:
+          name: eshop-config
+      image: eshopacr2026.azurecr.io/eshop-identity-api:v1
+      imagePullPolicy: IfNotPresent
+      name: app
+      ports:
+      - containerPort: 8080
+        protocol: TCP
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-45c5p
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: acr-secret
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-45c5p
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 128Mi
+      containerID: containerd://67c41aa2f6e1f11f1d1be98644d234dd547c5453c3b444c683552469dbc6846b
+      image: eshopacr2026.azurecr.io/eshop-identity-api:v1
+      imageID: eshopacr2026.azurecr.io/eshop-identity-api@sha256:a7c94a12c7b403f8c7c85ffb9400e97c9f6db0ebe2de8299c7a24553b8942bcf
+      lastState:
+        terminated:
+          containerID: containerd://02628ada01b9ddcd92102e049caddaff80e8ffef369cae3b550823ba2bd5894e
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:24Z"
+      name: app
+      ready: true
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:54:57Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-45c5p
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.250
+    podIPs:
+    - ip: 192.168.53.250
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:23Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: 4f2212ad62302ccfcd66a0c243e4115acb39e5f61d3a082a8dba3c61e22ed2a2
+      cni.projectcalico.org/podIP: 192.168.53.210/32
+      cni.projectcalico.org/podIPs: 192.168.53.210/32
+    creationTimestamp: "2026-09-30T20:47:23Z"
+    generateName: eshop-order-processor-855b9dc675-
+    generation: 1
+    labels:
+      app: eshop-order-processor
+      pod-template-hash: 855b9dc675
+      tier: worker
+    name: eshop-order-processor-855b9dc675-8rnjf
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: eshop-order-processor-855b9dc675
+      uid: 772d393a-bb19-4cfb-9904-a3bcd7e872a8
+    resourceVersion: "4757"
+    uid: 21822c3d-be22-4d1f-9521-07f279b3fb53
+  spec:
+    containers:
+    - env:
+      - name: services__catalog-api__http__0
+        value: http://eshop-catalog-api
+      - name: services__basket-api__http__0
+        value: http://eshop-basket-api
+      - name: services__ordering-api__http__0
+        value: http://eshop-ordering-api
+      - name: services__identity-api__http__0
+        value: http://eshop-identity-api
+      envFrom:
+      - configMapRef:
+          name: eshop-config
+      image: eshopacr2026.azurecr.io/eshop-order-processor:v1
+      imagePullPolicy: IfNotPresent
+      name: app
+      resources:
+        limits:
+          memory: 300Mi
+        requests:
+          cpu: 50m
+          memory: 96Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-7qqzw
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: acr-secret
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-7qqzw
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 96Mi
+      containerID: containerd://53a840476d1cd7ecc188a7fb097d0c655c66f298092bda6d527a8891c651aef6
+      image: eshopacr2026.azurecr.io/eshop-order-processor:v1
+      imageID: eshopacr2026.azurecr.io/eshop-order-processor@sha256:51a890e10ebf99d0f3ca63c7517a69f3a903b935c8dc17ee70571f48d0b6317e
+      lastState:
+        terminated:
+          containerID: containerd://0e5b9e1f6ec2a0c9703d8f34584a951168f4142c90dc36630ff81789ce2a52b7
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:26Z"
+      name: app
+      ready: true
+      resources:
+        limits:
+          memory: 300Mi
+        requests:
+          cpu: 50m
+          memory: 96Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:55:02Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-7qqzw
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.210
+    podIPs:
+    - ip: 192.168.53.210
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:23Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: a0ef583fe397c173f21f4fa0952b615458ba861e4031f67e6f0bfdbe956add62
+      cni.projectcalico.org/podIP: 192.168.53.197/32
+      cni.projectcalico.org/podIPs: 192.168.53.197/32
+    creationTimestamp: "2026-09-30T20:47:23Z"
+    generateName: eshop-ordering-api-67ff49c56c-
+    generation: 1
+    labels:
+      app: eshop-ordering-api
+      pod-template-hash: 67ff49c56c
+      tier: backend
+    name: eshop-ordering-api-67ff49c56c-bspfr
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: eshop-ordering-api-67ff49c56c
+      uid: 917a2401-4c69-4f81-a900-1288629eca4d
+    resourceVersion: "4753"
+    uid: e80fd943-7f67-450e-8a0c-4072651556ed
+  spec:
+    containers:
+    - env:
+      - name: ConnectionStrings__ordering
+        value: Server=mssql;Database=OrderingDb;User Id=sa;Password=Pass@word1;TrustServerCertificate=true
+      - name: services__catalog-api__http__0
+        value: http://eshop-catalog-api
+      - name: services__basket-api__http__0
+        value: http://eshop-basket-api
+      - name: services__ordering-api__http__0
+        value: http://eshop-ordering-api
+      - name: services__identity-api__http__0
+        value: http://eshop-identity-api
+      envFrom:
+      - configMapRef:
+          name: eshop-config
+      image: eshopacr2026.azurecr.io/eshop-ordering-api:v1
+      imagePullPolicy: IfNotPresent
+      name: app
+      ports:
+      - containerPort: 8080
+        protocol: TCP
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-2m8fs
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: acr-secret
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-2m8fs
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:02Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 128Mi
+      containerID: containerd://9c6cabdb78e09c98fc6ecfd624a974370d51a9828847b53474378ab2a7319e4b
+      image: eshopacr2026.azurecr.io/eshop-ordering-api:v1
+      imageID: eshopacr2026.azurecr.io/eshop-ordering-api@sha256:9282b8caf9d9262f4eccef5f36532072d3ae357f2870d4cc78048e3dfb9276e9
+      lastState:
+        terminated:
+          containerID: containerd://021e543b599b14b4bd28ced6cf1e95136b22780896fd9e594ed4269414518023
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:24Z"
+      name: app
+      ready: true
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:55:01Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-2m8fs
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.197
+    podIPs:
+    - ip: 192.168.53.197
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:23Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: dd7fcbebeee7aaa5c3e9c345447ce5db8f3492bd30a4029f776f86811fc0fe6b
+      cni.projectcalico.org/podIP: 192.168.53.249/32
+      cni.projectcalico.org/podIPs: 192.168.53.249/32
+    creationTimestamp: "2026-09-30T20:47:24Z"
+    generateName: eshop-payment-processor-6fc6c569ff-
+    generation: 1
+    labels:
+      app: eshop-payment-processor
+      pod-template-hash: 6fc6c569ff
+      tier: worker
+    name: eshop-payment-processor-6fc6c569ff-msb4r
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: eshop-payment-processor-6fc6c569ff
+      uid: 9a3f1590-a4dc-4b53-afb3-32d65c2744b6
+    resourceVersion: "4642"
+    uid: d86f1b81-f639-4e95-af27-b72b5e773b81
+  spec:
+    containers:
+    - env:
+      - name: services__catalog-api__http__0
+        value: http://eshop-catalog-api
+      - name: services__basket-api__http__0
+        value: http://eshop-basket-api
+      - name: services__ordering-api__http__0
+        value: http://eshop-ordering-api
+      - name: services__identity-api__http__0
+        value: http://eshop-identity-api
+      envFrom:
+      - configMapRef:
+          name: eshop-config
+      image: eshopacr2026.azurecr.io/eshop-payment-processor:v1
+      imagePullPolicy: IfNotPresent
+      name: app
+      resources:
+        limits:
+          memory: 300Mi
+        requests:
+          cpu: 50m
+          memory: 96Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-fs5vt
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: acr-secret
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-fs5vt
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:24Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:24Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 96Mi
+      containerID: containerd://ee3784d050692e24ada3815f9809866e947916fce313100d116a36801874b418
+      image: eshopacr2026.azurecr.io/eshop-payment-processor:v1
+      imageID: eshopacr2026.azurecr.io/eshop-payment-processor@sha256:063def2d4e4e877a0a4b7abb28b7d27f09344de17657ada326bc5cf9dfcd2c91
+      lastState:
+        terminated:
+          containerID: containerd://1edbed58c83e8b86e3f90ffc75546e0d64e05b87955cb001ae54921fc61d38be
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:26Z"
+      name: app
+      ready: true
+      resources:
+        limits:
+          memory: 300Mi
+        requests:
+          cpu: 50m
+          memory: 96Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:54:57Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-fs5vt
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.249
+    podIPs:
+    - ip: 192.168.53.249
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:24Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: 6cb82249b640147455226561cb0ae642ea5739b0a189fa4780b6e434d9493a14
+      cni.projectcalico.org/podIP: 192.168.53.254/32
+      cni.projectcalico.org/podIPs: 192.168.53.254/32
+    creationTimestamp: "2026-09-30T20:47:22Z"
+    generateName: eshop-webapp-74756948b8-
+    generation: 1
+    labels:
+      app: eshop-webapp
+      pod-template-hash: 74756948b8
+      tier: frontend
+    name: eshop-webapp-74756948b8-ngp8c
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: eshop-webapp-74756948b8
+      uid: c620725b-0de7-4437-aad1-60b12d96c01d
+    resourceVersion: "4717"
+    uid: 0c7fe96e-fd85-4485-8ef6-dfc5976dfacc
+  spec:
+    containers:
+    - env:
+      - name: CallBackUrl
+        value: http://localhost:8080
+      - name: services__catalog-api__http__0
+        value: http://eshop-catalog-api
+      - name: services__basket-api__http__0
+        value: http://eshop-basket-api
+      - name: services__ordering-api__http__0
+        value: http://eshop-ordering-api
+      - name: services__identity-api__http__0
+        value: http://eshop-identity-api
+      envFrom:
+      - configMapRef:
+          name: eshop-config
+      image: eshopacr2026.azurecr.io/eshop-webapp:v1
+      imagePullPolicy: IfNotPresent
+      name: app
+      ports:
+      - containerPort: 8080
+        protocol: TCP
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-7p7pd
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: acr-secret
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-7p7pd
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:22Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:00Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:22Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 128Mi
+      containerID: containerd://1079e59df2a47b6c1b287047ec73955e0fc9d0056c7c666bd0c0e4adb818f47b
+      image: eshopacr2026.azurecr.io/eshop-webapp:v1
+      imageID: eshopacr2026.azurecr.io/eshop-webapp@sha256:e0ff4f01da587e9517b7f5b5a05b0d543e1bb46948a917ccba0c91a705ddd315
+      lastState:
+        terminated:
+          containerID: containerd://c65eb267b7f8e307d4125ba02441eec46e42ffcab892c328f45fafafd23c7a40
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:23Z"
+      name: app
+      ready: true
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:54:59Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-7p7pd
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.254
+    podIPs:
+    - ip: 192.168.53.254
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:22Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: 8d04e826b69efbdb002e7e7b23008ecbee8ea5d72916e2c6ad3f3084c0ba186a
+      cni.projectcalico.org/podIP: 192.168.53.255/32
+      cni.projectcalico.org/podIPs: 192.168.53.255/32
+      kubectl.kubernetes.io/restartedAt: "2026-10-01T01:50:18+05:00"
+    creationTimestamp: "2026-09-30T20:50:18Z"
+    generateName: eshop-webhook-client-6d8595cb5c-
+    generation: 1
+    labels:
+      app: eshop-webhook-client
+      pod-template-hash: 6d8595cb5c
+      tier: worker
+    name: eshop-webhook-client-6d8595cb5c-nkxmq
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: eshop-webhook-client-6d8595cb5c
+      uid: cba492d2-abb9-4be4-a023-54f79aee78e3
+    resourceVersion: "4738"
+    uid: ddfa2f2e-9210-450c-b17d-ccf08b371047
+  spec:
+    containers:
+    - env:
+      - name: services__catalog-api__http__0
+        value: http://eshop-catalog-api
+      - name: services__basket-api__http__0
+        value: http://eshop-basket-api
+      - name: services__ordering-api__http__0
+        value: http://eshop-ordering-api
+      - name: services__identity-api__http__0
+        value: http://eshop-identity-api
+      envFrom:
+      - configMapRef:
+          name: eshop-config
+      image: eshopacr2026.azurecr.io/eshop-webhook-client:v1
+      imagePullPolicy: IfNotPresent
+      name: app
+      resources:
+        limits:
+          memory: 300Mi
+        requests:
+          cpu: 50m
+          memory: 96Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-85pt4
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: acr-secret
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-85pt4
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:01Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:50:18Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:01Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:01Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:50:18Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 96Mi
+      containerID: containerd://e87bf73760db5e207e90ebe9788bc8b9e8d02612ff02c65cf6ee2812d7bf7ccf
+      image: eshopacr2026.azurecr.io/eshop-webhook-client:v1
+      imageID: eshopacr2026.azurecr.io/eshop-webhook-client@sha256:9c46f97f7de8ca67b907ae08522d61ba320ac8b97f1f94b217c47e984f82179d
+      lastState:
+        terminated:
+          containerID: containerd://c111f6d01eff58a0f95f1e4468388c4debfde2d1da51cce4fe390d59b888768f
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:50:18Z"
+      name: app
+      ready: true
+      resources:
+        limits:
+          memory: 300Mi
+        requests:
+          cpu: 50m
+          memory: 96Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:55:00Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-85pt4
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.255
+    podIPs:
+    - ip: 192.168.53.255
+    qosClass: Burstable
+    startTime: "2026-09-30T20:50:18Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: 4631d770706b0b49895295e6cc251d7061eeed470df7a525fd7dd77027f70787
+      cni.projectcalico.org/podIP: 192.168.53.251/32
+      cni.projectcalico.org/podIPs: 192.168.53.251/32
+    creationTimestamp: "2026-09-30T20:47:23Z"
+    generateName: eshop-webhooks-api-5fd598bd87-
+    generation: 1
+    labels:
+      app: eshop-webhooks-api
+      pod-template-hash: 5fd598bd87
+      tier: backend
+    name: eshop-webhooks-api-5fd598bd87-2x2gn
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: ReplicaSet
+      name: eshop-webhooks-api-5fd598bd87
+      uid: 88a3b733-42de-4a0b-9dff-2d511cf516da
+    resourceVersion: "4646"
+    uid: 7bda75e5-2d62-4acf-801a-7a0206a47312
+  spec:
+    containers:
+    - env:
+      - name: ConnectionStrings__webhooks
+        value: Server=mssql;Database=WebhooksDb;User Id=sa;Password=Pass@word1;TrustServerCertificate=true
+      - name: services__catalog-api__http__0
+        value: http://eshop-catalog-api
+      - name: services__basket-api__http__0
+        value: http://eshop-basket-api
+      - name: services__ordering-api__http__0
+        value: http://eshop-ordering-api
+      - name: services__identity-api__http__0
+        value: http://eshop-identity-api
+      envFrom:
+      - configMapRef:
+          name: eshop-config
+      image: eshopacr2026.azurecr.io/eshop-webhooks-api:v1
+      imagePullPolicy: IfNotPresent
+      name: app
+      ports:
+      - containerPort: 8080
+        protocol: TCP
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-frkld
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    imagePullSecrets:
+    - name: acr-secret
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: kube-api-access-frkld
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:58Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:23Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 128Mi
+      containerID: containerd://b4b43f2df0093de950511550840f5fa40d810c166dfaa071651b7dd68bb1d29f
+      image: eshopacr2026.azurecr.io/eshop-webhooks-api:v1
+      imageID: eshopacr2026.azurecr.io/eshop-webhooks-api@sha256:c97a2e5b5cbd096037c1258c4cfbd4aea9cbdd9ea854089296eb5253195fe02e
+      lastState:
+        terminated:
+          containerID: containerd://a7d61aa889af43efe9cebe3c90de6590e4168c72b57294cafb761c7628ccb73e
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:25Z"
+      name: app
+      ready: true
+      resources:
+        limits:
+          memory: 400Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:54:57Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-frkld
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.251
+    podIPs:
+    - ip: 192.168.53.251
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:23Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: ca24f2b47e7a2b5082ab902af74d2cff7013da790386c81a227b06e24a9f70b6
+      cni.projectcalico.org/podIP: 192.168.53.244/32
+      cni.projectcalico.org/podIPs: 192.168.53.244/32
+    creationTimestamp: "2026-09-30T20:47:27Z"
+    generateName: postgres-
+    generation: 1
+    labels:
+      app: postgres
+      apps.kubernetes.io/pod-index: "0"
+      controller-revision-hash: postgres-75db464fcd
+      statefulset.kubernetes.io/pod-name: postgres-0
+      tier: data
+    name: postgres-0
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: StatefulSet
+      name: postgres
+      uid: c3dc1bf3-328b-4750-bb28-b64c2320b285
+    resourceVersion: "4689"
+    uid: b2a5e92c-83d7-4e55-9f66-f1912199c59f
+  spec:
+    containers:
+    - env:
+      - name: POSTGRES_USER
+        value: postgres
+      - name: POSTGRES_PASSWORD
+        value: postgres
+      - name: PGDATA
+        value: /var/lib/postgresql/data/pgdata
+      image: pgvector/pgvector:pg16
+      imagePullPolicy: IfNotPresent
+      name: postgres
+      ports:
+      - containerPort: 5432
+        name: pg
+        protocol: TCP
+      readinessProbe:
+        exec:
+          command:
+          - pg_isready
+          - -U
+          - postgres
+        failureThreshold: 3
+        initialDelaySeconds: 10
+        periodSeconds: 5
+        successThreshold: 1
+        timeoutSeconds: 1
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/lib/postgresql/data
+        name: data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-x8lf7
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    hostname: postgres-0
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    subdomain: postgres
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: data-postgres-0
+    - name: kube-api-access-x8lf7
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:48Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:27Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:59Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:59Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:27Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 256Mi
+      containerID: containerd://abb04d16f6b4a67bfbb1661095f1c7ecfd01ac0430f77c4efb58d7c7d4fbb923
+      image: docker.io/pgvector/pgvector:pg16
+      imageID: docker.io/pgvector/pgvector@sha256:ccc6e83d6e35e931dc7c5def2022729d5a6c370318d099181995567ff1fb4d6b
+      lastState:
+        terminated:
+          containerID: containerd://a2a1d3fe01e371a74677f6f0ad2e44ceca9ea2abe20c0907c96fbd5b70acca7d
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:28Z"
+      name: postgres
+      ready: true
+      resources:
+        limits:
+          memory: 1Gi
+        requests:
+          cpu: 100m
+          memory: 256Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:54:47Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          uid: 0
+      volumeMounts:
+      - mountPath: /var/lib/postgresql/data
+        name: data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-x8lf7
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.244
+    podIPs:
+    - ip: 192.168.53.244
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:27Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: dc1b68d966d502b176e2d0b7144a820036ee383ec7da4a53b12465afe61eb3e6
+      cni.projectcalico.org/podIP: 192.168.53.245/32
+      cni.projectcalico.org/podIPs: 192.168.53.245/32
+    creationTimestamp: "2026-09-30T20:47:52Z"
+    generateName: rabbitmq-
+    generation: 1
+    labels:
+      app: rabbitmq
+      apps.kubernetes.io/pod-index: "0"
+      controller-revision-hash: rabbitmq-667f7868b4
+      statefulset.kubernetes.io/pod-name: rabbitmq-0
+      tier: data
+    name: rabbitmq-0
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: StatefulSet
+      name: rabbitmq
+      uid: 8feb4f33-8688-45cf-a2f0-86801044289f
+    resourceVersion: "4795"
+    uid: f93418c8-4fd0-40ba-a573-215fb1ff0142
+  spec:
+    containers:
+    - env:
+      - name: RABBITMQ_DEFAULT_USER
+        value: eshop
+      - name: RABBITMQ_DEFAULT_PASS
+        value: eshop123
+      - name: RABBITMQ_DATA_DIR
+        value: /var/lib/rabbitmq
+      image: rabbitmq:3-management-alpine
+      imagePullPolicy: IfNotPresent
+      name: rabbitmq
+      ports:
+      - containerPort: 5672
+        name: amqp
+        protocol: TCP
+      - containerPort: 15672
+        name: mgmt
+        protocol: TCP
+      readinessProbe:
+        exec:
+          command:
+          - rabbitmq-diagnostics
+          - -q
+          - ping
+        failureThreshold: 6
+        initialDelaySeconds: 30
+        periodSeconds: 15
+        successThreshold: 1
+        timeoutSeconds: 10
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 192Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /var/lib/rabbitmq
+        name: data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-mk9mc
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    hostname: rabbitmq-0
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext:
+      fsGroup: 999
+      runAsGroup: 999
+      runAsUser: 999
+    serviceAccount: default
+    serviceAccountName: default
+    subdomain: rabbitmq
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: data-rabbitmq-0
+    - name: kube-api-access-mk9mc
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:48Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:52Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:20Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:55:20Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:52Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 100m
+        memory: 192Mi
+      containerID: containerd://8c530211c74c6ca2a5718c73c8bb4defde6e677cd3c0ca187e71c4aa3ea5af49
+      image: docker.io/library/rabbitmq:3-management-alpine
+      imageID: docker.io/library/rabbitmq@sha256:606d8c0d6b3c18d1da9afc53bc7cdb2a8d5486df91b5a9830e9e07626c9ae281
+      lastState:
+        terminated:
+          containerID: containerd://f7928aea3a029dd51184b81416a3a271bcf8519d272ce2be14db9dae80b397dc
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:52Z"
+      name: rabbitmq
+      ready: true
+      resources:
+        limits:
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 192Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:54:47Z"
+      user:
+        linux:
+          gid: 999
+          supplementalGroups:
+          - 999
+          uid: 999
+      volumeMounts:
+      - mountPath: /var/lib/rabbitmq
+        name: data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-mk9mc
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.245
+    podIPs:
+    - ip: 192.168.53.245
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:52Z"
+- apiVersion: v1
+  kind: Pod
+  metadata:
+    annotations:
+      cni.projectcalico.org/containerID: 0c14bf1475a0438ce2c1eabbf25f0d2a7d8bcff202c81f3a19874f2943a9d3dc
+      cni.projectcalico.org/podIP: 192.168.53.253/32
+      cni.projectcalico.org/podIPs: 192.168.53.253/32
+    creationTimestamp: "2026-09-30T20:47:27Z"
+    generateName: redis-
+    generation: 1
+    labels:
+      app: redis
+      apps.kubernetes.io/pod-index: "0"
+      controller-revision-hash: redis-6ffd98bfcd
+      statefulset.kubernetes.io/pod-name: redis-0
+      tier: data
+    name: redis-0
+    namespace: eshop
+    ownerReferences:
+    - apiVersion: apps/v1
+      blockOwnerDeletion: true
+      controller: true
+      kind: StatefulSet
+      name: redis
+      uid: da977b7d-ae36-4552-8608-5dd57d5ae296
+    resourceVersion: "4680"
+    uid: 8d4351b7-c77b-48a3-83b0-1edc50e31005
+  spec:
+    containers:
+    - args:
+      - --appendonly
+      - "yes"
+      - --dir
+      - /data
+      image: redis:7-alpine
+      imagePullPolicy: IfNotPresent
+      name: redis
+      ports:
+      - containerPort: 6379
+        name: redis
+        protocol: TCP
+      resources:
+        limits:
+          memory: 256Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+      - mountPath: /data
+        name: data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-wnlhl
+        readOnly: true
+    dnsPolicy: ClusterFirst
+    enableServiceLinks: true
+    hostname: redis-0
+    nodeName: eshop-local-control-plane
+    preemptionPolicy: PreemptLowerPriority
+    priority: 0
+    restartPolicy: Always
+    schedulerName: default-scheduler
+    securityContext: {}
+    serviceAccount: default
+    serviceAccountName: default
+    subdomain: redis
+    terminationGracePeriodSeconds: 30
+    tolerations:
+    - effect: NoExecute
+      key: node.kubernetes.io/not-ready
+      operator: Exists
+      tolerationSeconds: 300
+    - effect: NoExecute
+      key: node.kubernetes.io/unreachable
+      operator: Exists
+      tolerationSeconds: 300
+    volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: data-redis-0
+    - name: kube-api-access-wnlhl
+      projected:
+        defaultMode: 420
+        sources:
+        - serviceAccountToken:
+            expirationSeconds: 3607
+            path: token
+        - configMap:
+            items:
+            - key: ca.crt
+              path: ca.crt
+            name: kube-root-ca.crt
+        - downwardAPI:
+            items:
+            - fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+              path: namespace
+  status:
+    conditions:
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:59Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodReadyToStartContainers
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:27Z"
+      observedGeneration: 1
+      status: "True"
+      type: Initialized
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:59Z"
+      observedGeneration: 1
+      status: "True"
+      type: Ready
+    - lastProbeTime: null
+      lastTransitionTime: "2026-10-01T15:54:59Z"
+      observedGeneration: 1
+      status: "True"
+      type: ContainersReady
+    - lastProbeTime: null
+      lastTransitionTime: "2026-09-30T20:47:27Z"
+      observedGeneration: 1
+      status: "True"
+      type: PodScheduled
+    containerStatuses:
+    - allocatedResources:
+        cpu: 50m
+        memory: 64Mi
+      containerID: containerd://a62772fe0c5c14a7aa6a0013cf40f0d12d98bad0270e1afb91103a025dd59e98
+      image: docker.io/library/redis:7-alpine
+      imageID: docker.io/library/redis@sha256:858f009f9709ce576febc734aa78b8f6d624b82571f9ddb6bda4377c833b3499
+      lastState:
+        terminated:
+          containerID: containerd://df04d5eafccef8b994e44065efdea3718a24771afb468a78bd5f55632ff3cd5d
+          exitCode: 255
+          finishedAt: "2026-10-01T15:54:12Z"
+          reason: Unknown
+          startedAt: "2026-09-30T20:47:29Z"
+      name: redis
+      ready: true
+      resources:
+        limits:
+          memory: 256Mi
+        requests:
+          cpu: 50m
+          memory: 64Mi
+      restartCount: 1
+      started: true
+      state:
+        running:
+          startedAt: "2026-10-01T15:54:58Z"
+      user:
+        linux:
+          gid: 0
+          supplementalGroups:
+          - 0
+          - 1
+          - 2
+          - 3
+          - 4
+          - 6
+          - 10
+          - 11
+          - 20
+          - 26
+          - 27
+          uid: 0
+      volumeMounts:
+      - mountPath: /data
+        name: data
+      - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        name: kube-api-access-wnlhl
+        readOnly: true
+        recursiveReadOnly: Disabled
+    hostIP: 172.21.0.3
+    hostIPs:
+    - ip: 172.21.0.3
+    observedGeneration: 1
+    phase: Running
+    podIP: 192.168.53.253
+    podIPs:
+    - ip: 192.168.53.253
+    qosClass: Burstable
+    startTime: "2026-09-30T20:47:27Z"
+kind: List
+metadata:
+  resourceVersion: ""

@@ -1,0 +1,166 @@
+# ============================================================
+# PostgreSQL StatefulSet
+# ============================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+  namespace: eshop
+spec:
+  serviceName: postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: postgres }
+  template:
+    metadata:
+      labels: { app: postgres }
+    spec:
+      containers:
+      - name: postgres
+        image: pgvector/pgvector:pg16
+        ports:
+        - { containerPort: 5432, name: pg }
+        env:
+        - { name: POSTGRES_USER,     value: postgres }
+        - { name: POSTGRES_PASSWORD, value: postgres }
+        - { name: PGDATA,            value: /var/lib/postgresql/data/pgdata }
+        volumeMounts:
+        - { name: data, mountPath: /var/lib/postgresql/data }
+        resources:
+          requests: { memory: "256Mi", cpu: "100m" }
+          limits:   { memory: "1Gi" }
+        readinessProbe:
+          exec:
+            command: ["pg_isready", "-U", "postgres"]
+          initialDelaySeconds: 10
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ReadWriteOnce]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 4Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  namespace: eshop
+spec:
+  selector: { app: postgres }
+  ports: [{ port: 5432, targetPort: 5432 }]
+---
+# ============================================================
+# Redis StatefulSet
+# ============================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: redis
+  namespace: eshop
+spec:
+  serviceName: redis
+  replicas: 1
+  selector:
+    matchLabels: { app: redis }
+  template:
+    metadata:
+      labels: { app: redis }
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports:
+        - { containerPort: 6379, name: redis }
+        args: ["--appendonly", "yes", "--dir", "/data"]
+        volumeMounts:
+        - { name: data, mountPath: /data }
+        resources:
+          requests: { memory: "64Mi", cpu: "50m" }
+          limits:   { memory: "256Mi" }
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ReadWriteOnce]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: eshop
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: 6379 }]
+---
+# ============================================================
+# RabbitMQ StatefulSet
+# ============================================================
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  namespace: eshop
+spec:
+  serviceName: rabbitmq
+  replicas: 1
+  selector:
+    matchLabels: { app: rabbitmq }
+  template:
+    metadata:
+      labels: { app: rabbitmq }
+    spec:
+      hostname: rabbitmq-0
+      securityContext:
+        fsGroup: 999
+        runAsUser: 999
+        runAsGroup: 999
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3-management-alpine
+        ports:
+        - { containerPort: 5672,  name: amqp }
+        - { containerPort: 15672, name: mgmt }
+        env:
+        - { name: RABBITMQ_DEFAULT_USER, value: eshop }
+        - { name: RABBITMQ_DEFAULT_PASS, value: eshop123 }
+        - { name: RABBITMQ_DATA_DIR,     value: /var/lib/rabbitmq }
+        volumeMounts:
+        - { name: data, mountPath: /var/lib/rabbitmq }
+        resources:
+          requests: { memory: "192Mi", cpu: "100m" }
+          limits:   { memory: "512Mi" }
+        readinessProbe:
+          exec:
+            command: ["rabbitmq-diagnostics", "-q", "ping"]
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 6
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: [ReadWriteOnce]
+      storageClassName: standard
+      resources:
+        requests:
+          storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: eshop
+spec:
+  selector: { app: rabbitmq }
+  ports:
+  - { name: amqp, port: 5672, targetPort: 5672 }
+  - { name: mgmt, port: 15672, targetPort: 15672 }

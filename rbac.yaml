@@ -1,0 +1,113 @@
+# ============================================================
+# ADMIN — full access to everything in eshop namespace
+# ============================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: eshop-admin
+  namespace: eshop
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+# ============================================================
+# DEVELOPER — read/write workloads, no secrets access
+# ============================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: eshop-developer
+  namespace: eshop
+rules:
+- apiGroups: [""]
+  resources: ["pods", "pods/log", "pods/exec", "services", "configmaps", "endpoints", "events"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "statefulsets", "daemonsets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses", "networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list"]        # read-only — no create/update/delete
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "list", "watch"]
+---
+# ============================================================
+# VIEWER — read-only
+# ============================================================
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: eshop-viewer
+  namespace: eshop
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["get", "list", "watch"]
+---
+# ============================================================
+# ServiceAccounts and RoleBindings
+# ============================================================
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alice-admin
+  namespace: eshop
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: bob-developer
+  namespace: eshop
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: carol-viewer
+  namespace: eshop
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alice-is-admin
+  namespace: eshop
+subjects:
+- kind: ServiceAccount
+  name: alice-admin
+  namespace: eshop
+roleRef:
+  kind: Role
+  name: eshop-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bob-is-developer
+  namespace: eshop
+subjects:
+- kind: ServiceAccount
+  name: bob-developer
+  namespace: eshop
+roleRef:
+  kind: Role
+  name: eshop-developer
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: carol-is-viewer
+  namespace: eshop
+subjects:
+- kind: ServiceAccount
+  name: carol-viewer
+  namespace: eshop
+roleRef:
+  kind: Role
+  name: eshop-viewer
+  apiGroup: rbac.authorization.k8s.io

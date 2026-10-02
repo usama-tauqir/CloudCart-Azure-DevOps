@@ -1,0 +1,132 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eshop
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eshop-config
+  namespace: eshop
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+  ASPNETCORE_URLS: "http://+:8080"
+  ConnectionStrings__eventbus: "amqp://eshop:eshop123@rabbitmq:5672"
+  IdentityUrl: "http://eshop-identity-api"
+  IdentityUrlExternal: "http://localhost:8080"
+  Identity__Url: "http://eshop-identity-api"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mssql-data
+  namespace: eshop
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      storage: 4Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mssql
+  namespace: eshop
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mssql }
+  template:
+    metadata:
+      labels: { app: mssql }
+    spec:
+      containers:
+      - name: mssql
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        ports:
+        - { containerPort: 1433 }
+        env:
+        - { name: ACCEPT_EULA, value: "Y" }
+        - { name: MSSQL_SA_PASSWORD, value: "Pass@word1" }
+        - { name: MSSQL_PID, value: "Developer" }
+        volumeMounts:
+        - { name: data, mountPath: /var/opt/mssql }
+        resources:
+          requests: { memory: "1Gi", cpu: "300m" }
+          limits:   { memory: "2Gi" }
+      volumes:
+      - name: data
+        persistentVolumeClaim: { claimName: mssql-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mssql
+  namespace: eshop
+spec:
+  selector: { app: mssql }
+  ports:
+  - { port: 1433, targetPort: 1433 }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: eshop
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: redis } }
+  template:
+    metadata: { labels: { app: redis } }
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        ports: [{ containerPort: 6379 }]
+        resources:
+          requests: { memory: "64Mi", cpu: "50m" }
+          limits:   { memory: "256Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: eshop
+spec:
+  selector: { app: redis }
+  ports: [{ port: 6379, targetPort: 6379 }]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rabbitmq
+  namespace: eshop
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: rabbitmq } }
+  template:
+    metadata: { labels: { app: rabbitmq } }
+    spec:
+      containers:
+      - name: rabbitmq
+        image: rabbitmq:3-management-alpine
+        ports:
+        - { containerPort: 5672, name: amqp }
+        - { containerPort: 15672, name: mgmt }
+        env:
+        - { name: RABBITMQ_DEFAULT_USER, value: eshop }
+        - { name: RABBITMQ_DEFAULT_PASS, value: "eshop123" }
+        resources:
+          requests: { memory: "192Mi", cpu: "100m" }
+          limits:   { memory: "512Mi" }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  namespace: eshop
+spec:
+  selector: { app: rabbitmq }
+  ports:
+  - { name: amqp, port: 5672, targetPort: 5672 }
+  - { name: mgmt, port: 15672, targetPort: 15672 }

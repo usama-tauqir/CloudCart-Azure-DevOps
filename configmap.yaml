@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eshop-config
+  namespace: eshop
+data:
+  ASPNETCORE_ENVIRONMENT: "Development"
+  ASPNETCORE_URLS: "http://+:8080"
+
+  # Event bus (RabbitMQ)
+  ConnectionStrings__eventbus: "amqp://eshop:eshop123@rabbitmq:5672"
+
+  # PostgreSQL connection strings (names match each service's appsettings.Development.json)
+  ConnectionStrings__catalogdb:   "Host=postgres;Database=catalogdb;Username=postgres;Password=postgres"
+  ConnectionStrings__identitydb:  "Host=postgres;Database=identitydb;Username=postgres;Password=postgres"
+  ConnectionStrings__orderingdb:  "Host=postgres;Database=orderingdb;Username=postgres;Password=postgres"
+  ConnectionStrings__webhooksdb:  "Host=postgres;Database=webhooksdb;Username=postgres;Password=postgres"
+
+  # Redis (basket)
+  ConnectionStrings__basketdb: "redis:6379"
+
+  # Identity URL — needed by webapp / basket / ordering / webhooks
+  Identity__Url: "http://eshop-identity-api"
+
+  # Identity:Scopes — required by AddDefaultOpenApi when Identity section exists.
+  # One placeholder is enough to prevent the "Section 'Scopes' not found" crash.
+  Identity__Scopes__Default: "default"
+
+  # Front-end specific
+  IdentityUrl: "http://eshop-identity-api"
+  IdentityUrlExternal: "http://localhost:8080"
