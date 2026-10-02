@@ -311,19 +311,12 @@ jobs:
       - name: Install SonarScanner for .NET
         shell: bash
         run: |
-          dotnet tool install \
-            --global dotnet-sonarscanner
-
-          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
-      # -----------------------------------------------------
-      # Validate SonarQube configuration
-      # -----------------------------------------------------
-      - name: Install SonarScanner for .NET
-        shell: bash
-        run: |
           dotnet tool install --global dotnet-sonarscanner
-          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
+          echo "PATH=$PATH:$HOME/.dotnet/tools" >> "$GITHUB_ENV"
+      # -----------------------------------------------------
+      # Start SonarQube analysis
+      # -----------------------------------------------------
       - name: SonarQube Begin
         working-directory: ${{ env.APP_ROOT }}
         shell: bash
@@ -332,23 +325,7 @@ jobs:
         run: |
           dotnet sonarscanner begin /k:"usama-tauqir_CloudCart-Azure-DevOps" /o:"usama-tauqir" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.token="$SONAR_TOKEN"
 
-      # -----------------------------------------------------
-      # Start SonarQube analysis
-      # -----------------------------------------------------
-
-      - name: SonarQube Begin
-        working-directory: ${{ env.APP_ROOT }}
-        shell: bash
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-        run: |
-          dotnet-sonarscanner begin \
-            /k:"$SONAR_PROJECT_KEY" \
-            /o:"$SONAR_ORGANIZATION" \
-            /d:sonar.host.url="$SONAR_HOST_URL" \
-            /d:sonar.token="$SONAR_TOKEN"
+      
 
       # -----------------------------------------------------
       # Build application while scanner is active
@@ -372,7 +349,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
-
       # -----------------------------------------------------
       # Wait until SonarQube finishes processing
       # -----------------------------------------------------
