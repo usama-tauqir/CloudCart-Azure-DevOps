@@ -327,7 +327,20 @@ jobs:
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
         run: |
-          echo "Organization: $SONAR_ORGANIZATION"
+          set -euo pipefail
+
+          echo "===================================="
+          echo "SONAR CONFIGURATION DEBUG"
+          echo "===================================="
+          echo "Host: <$SONAR_HOST_URL>"
+          echo "Project: <$SONAR_PROJECT_KEY>"
+          echo "Organization: <$SONAR_ORGANIZATION>"
+          echo "===================================="
+
+          if [ -z "$SONAR_ORGANIZATION" ]; then
+            echo "ERROR: SONAR_ORGANIZATION is EMPTY inside this step."
+            exit 1
+          fi
 
           dotnet-sonarscanner begin \
             /k:"$SONAR_PROJECT_KEY" \
