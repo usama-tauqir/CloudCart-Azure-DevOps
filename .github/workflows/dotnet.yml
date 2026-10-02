@@ -318,7 +318,8 @@ jobs:
       # -----------------------------------------------------
       # Validate SonarQube configuration
       # -----------------------------------------------------
-      - name: Validate SonarQube configuration
+      - name: SonarQube Begin
+        working-directory: ${{ env.APP_ROOT }}
         shell: bash
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -326,32 +327,16 @@ jobs:
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
           SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
         run: |
-          set -euo pipefail
-
-          if [ -z "$SONAR_TOKEN" ]; then
-            echo "ERROR: SONAR_TOKEN secret is not configured."
-            exit 1
-          fi
-
-          if [ -z "$SONAR_HOST_URL" ]; then
-            echo "ERROR: SONAR_HOST_URL variable is not configured."
-            exit 1
-          fi
-
-          if [ -z "$SONAR_PROJECT_KEY" ]; then
-            echo "ERROR: SONAR_PROJECT_KEY variable is not configured."
-            exit 1
-          fi
-
-          if [ -z "$SONAR_ORGANIZATION" ]; then
-            echo "ERROR: SONAR_ORGANIZATION variable is not configured."
-            exit 1
-          fi
-
-          echo "SonarQube configuration detected."
+          echo "Starting SonarQube Cloud analysis..."
           echo "Host: $SONAR_HOST_URL"
           echo "Project: $SONAR_PROJECT_KEY"
           echo "Organization: $SONAR_ORGANIZATION"
+
+          dotnet-sonarscanner begin \
+            /k:"$SONAR_PROJECT_KEY" \
+            /o:"$SONAR_ORGANIZATION" \
+            /d:sonar.host.url="$SONAR_HOST_URL" \
+            /d:sonar.token="$SONAR_TOKEN"
 
 
 
