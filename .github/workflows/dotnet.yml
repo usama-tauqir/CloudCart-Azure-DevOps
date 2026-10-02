@@ -318,15 +318,19 @@ jobs:
       # -----------------------------------------------------
       # Validate SonarQube configuration
       # -----------------------------------------------------
+      - name: Install SonarScanner for .NET
+        shell: bash
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
       - name: SonarQube Begin
         working-directory: ${{ env.APP_ROOT }}
         shell: bash
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          dotnet-sonarscanner begin /k:"usama-tauqir_CloudCart-Azure-DevOps" /o:"usama-tauqir" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.token="$SONAR_TOKEN"
-
-
+          dotnet sonarscanner begin /k:"usama-tauqir_CloudCart-Azure-DevOps" /o:"usama-tauqir" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.token="$SONAR_TOKEN"
 
       # -----------------------------------------------------
       # Start SonarQube analysis
@@ -367,8 +371,7 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          dotnet-sonarscanner end \
-            /d:sonar.token="$SONAR_TOKEN"
+          dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
 
       # -----------------------------------------------------
       # Wait until SonarQube finishes processing
