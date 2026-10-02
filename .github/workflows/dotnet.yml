@@ -323,30 +323,8 @@ jobs:
         shell: bash
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
-          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
         run: |
-          set -euo pipefail
-
-          echo "===================================="
-          echo "SONAR CONFIGURATION DEBUG"
-          echo "===================================="
-          echo "Host: <$SONAR_HOST_URL>"
-          echo "Project: <$SONAR_PROJECT_KEY>"
-          echo "Organization: <$SONAR_ORGANIZATION>"
-          echo "===================================="
-
-          if [ -z "$SONAR_ORGANIZATION" ]; then
-            echo "ERROR: SONAR_ORGANIZATION is EMPTY inside this step."
-            exit 1
-          fi
-
-          dotnet-sonarscanner begin \
-            /k:"$SONAR_PROJECT_KEY" \
-            /o:"$SONAR_ORGANIZATION" \
-            /d:sonar.host.url="$SONAR_HOST_URL" \
-            /d:sonar.token="$SONAR_TOKEN"
+          dotnet-sonarscanner begin /k:"usama-tauqir_CloudCart-Azure-DevOps" /o:"usama-tauqir" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.token="$SONAR_TOKEN"
 
 
 
