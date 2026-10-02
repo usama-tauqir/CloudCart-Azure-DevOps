@@ -324,6 +324,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
           SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
         run: |
           set -euo pipefail
 
@@ -342,9 +343,15 @@ jobs:
             exit 1
           fi
 
+          if [ -z "$SONAR_ORGANIZATION" ]; then
+            echo "ERROR: SONAR_ORGANIZATION variable is not configured."
+            exit 1
+          fi
+
           echo "SonarQube configuration detected."
           echo "Host: $SONAR_HOST_URL"
           echo "Project: $SONAR_PROJECT_KEY"
+          echo "Organization: $SONAR_ORGANIZATION"
 
 
 
@@ -362,6 +369,7 @@ jobs:
         run: |
           dotnet-sonarscanner begin \
             /k:"$SONAR_PROJECT_KEY" \
+            /o:"$SONAR_ORGANIZATION" \
             /d:sonar.host.url="$SONAR_HOST_URL" \
             /d:sonar.token="$SONAR_TOKEN"
 
