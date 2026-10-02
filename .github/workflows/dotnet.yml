@@ -234,6 +234,401 @@ jobs:
           path: ${{ env.APP_ROOT }}/dependency-audit.txt
           if-no-files-found: ignore
 
+    # =========================================================
+  # SONARQUBE CODE QUALITY ANALYSIS
+  # =========================================================
+
+  sonarqube:
+    name: SonarQube Code Analysis
+
+    if: >
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+
+    runs-on: ubuntu-latest
+
+    needs:
+      - ci
+
+    outputs:
+      quality_gate: ${{ steps.sonar-results.outputs.quality_gate }}
+      open_issues: ${{ steps.sonar-results.outputs.open_issues }}
+
+    steps:
+
+      # -----------------------------------------------------
+      # Checkout complete Git history
+      # -----------------------------------------------------
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # -----------------------------------------------------
+      # Setup .NET
+      # -----------------------------------------------------
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      # -----------------------------------------------------
+      # Find eShop root
+      # -----------------------------------------------------
+
+      - name: Find eShop solution
+        shell: bash
+        run: |
+          set -e
+
+          SOLUTION_PATH=$(find "$GITHUB_WORKSPACE" \
+            -type f \
+            -name "eShop.Web.slnf" \
+            -print \
+            -quit)
+
+          if [ -z "$SOLUTION_PATH" ]; then
+            echo "ERROR: eShop.Web.slnf was not found."
+            exit 1
+          fi
+
+          APP_ROOT=$(dirname "$SOLUTION_PATH")
+
+          echo "Solution found:"
+          echo "$SOLUTION_PATH"
+
+          echo "Application root:"
+          echo "$APP_ROOT"
+
+          echo "APP_ROOT=$APP_ROOT" >> "$GITHUB_ENV"
+
+      # -----------------------------------------------------
+      # Install SonarScanner
+      # -----------------------------------------------------
+
+      - name: Install SonarScanner for .NET
+        shell: bash
+        run: |
+          dotnet tool install \
+            --global dotnet-sonarscanner
+
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+      # -----------------------------------------------------
+      # Validate SonarQube configuration
+      # -----------------------------------------------------
+      - name: Validate SonarQube configuration
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "ERROR: SONAR_TOKEN secret is not configured."
+            exit 1
+          fi
+
+          if [ -z "$SONAR_HOST_URL" ]; then
+            echo "ERROR: SONAR_HOST_URL variable is not configured."
+            exit 1
+          fi
+
+          if [ -z "$SONAR_PROJECT_KEY" ]; then
+            echo "ERROR: SONAR_PROJECT_KEY variable is not configured."
+            exit 1
+          fi
+
+          echo "SonarQube configuration detected."
+          echo "Host: $SONAR_HOST_URL"
+          echo "Project: $SONAR_PROJECT_KEY"
+
+
+
+      # -----------------------------------------------------
+      # Start SonarQube analysis
+      # -----------------------------------------------------
+
+      - name: SonarQube Begin
+        working-directory: ${{ env.APP_ROOT }}
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        run: |
+          dotnet-sonarscanner begin \
+            /k:"$SONAR_PROJECT_KEY" \
+            /d:sonar.host.url="$SONAR_HOST_URL" \
+            /d:sonar.token="$SONAR_TOKEN"
+
+      # -----------------------------------------------------
+      # Build application while scanner is active
+      # -----------------------------------------------------
+
+      - name: Build for SonarQube
+        working-directory: ${{ env.APP_ROOT }}
+        shell: bash
+        run: |
+          dotnet build eShop.Web.slnf \
+            --configuration Release
+
+      # -----------------------------------------------------
+      # Upload analysis to SonarQube
+      # -----------------------------------------------------
+
+      - name: SonarQube End
+        working-directory: ${{ env.APP_ROOT }}
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet-sonarscanner end \
+            /d:sonar.token="$SONAR_TOKEN"
+
+      # -----------------------------------------------------
+      # Wait until SonarQube finishes processing
+      # -----------------------------------------------------
+
+      - name: Wait for SonarQube analysis
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+        run: |
+          set -e
+
+          REPORT_FILE=$(find "$GITHUB_WORKSPACE" \
+            -type f \
+            -path "*/.sonarqube/out/.sonar/report-task.txt" \
+            -print \
+            -quit)
+
+          if [ -z "$REPORT_FILE" ]; then
+            echo "Unable to locate report-task.txt"
+            exit 1
+          fi
+
+          CE_TASK_URL=$(grep '^ceTaskUrl=' "$REPORT_FILE" | cut -d= -f2-)
+
+          echo "SonarQube task:"
+          echo "$CE_TASK_URL"
+
+          for i in {1..30}; do
+
+            RESPONSE=$(curl \
+              --silent \
+              --fail \
+              -u "${SONAR_TOKEN}:" \
+              "$CE_TASK_URL")
+
+            STATUS=$(echo "$RESPONSE" | jq -r '.task.status')
+
+            echo "SonarQube processing status: $STATUS"
+
+            if [ "$STATUS" = "SUCCESS" ]; then
+              exit 0
+            fi
+
+            if [ "$STATUS" = "FAILED" ] ||
+               [ "$STATUS" = "CANCELED" ]; then
+              echo "SonarQube processing failed."
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "Timed out waiting for SonarQube."
+          exit 1
+
+      # -----------------------------------------------------
+      # Collect Quality Gate + Open Issues
+      # -----------------------------------------------------
+
+      - name: Collect SonarQube results
+        id: sonar-results
+        shell: bash
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        run: |
+          set -euo pipefail
+
+          QUALITY_RESPONSE=$(curl \
+            --silent \
+            --fail \
+            -u "${SONAR_TOKEN}:" \
+            "${SONAR_HOST_URL}/api/qualitygates/project_status?projectKey=${SONAR_PROJECT_KEY}")
+
+          RAW_STATUS=$(echo "$QUALITY_RESPONSE" |
+            jq -r '.projectStatus.status')
+
+          if [ "$RAW_STATUS" = "OK" ]; then
+            QUALITY_GATE="PASSED"
+          else
+            QUALITY_GATE="FAILED"
+          fi
+
+          ISSUES_RESPONSE=$(curl \
+            --silent \
+            --fail \
+            -u "${SONAR_TOKEN}:" \
+            "${SONAR_HOST_URL}/api/issues/search?componentKeys=${SONAR_PROJECT_KEY}&resolved=false&ps=1")
+
+          OPEN_ISSUES=$(echo "$ISSUES_RESPONSE" |
+            jq -r '.total')
+
+          echo "Quality Gate: $QUALITY_GATE"
+          echo "Open Issues: $OPEN_ISSUES"
+
+          echo "quality_gate=$QUALITY_GATE" >> "$GITHUB_OUTPUT"
+          echo "open_issues=$OPEN_ISSUES" >> "$GITHUB_OUTPUT"
+
+    # =========================================================
+  # SONARQUBE SLACK NOTIFICATION
+  # =========================================================
+
+  sonar-slack:
+    name: SonarQube Slack Notification
+
+    runs-on: ubuntu-latest
+
+    needs:
+      - sonarqube
+
+    if: always() && needs.sonarqube.result == 'success'
+
+    steps:
+
+      - name: Prepare SonarQube Slack message
+        id: slack-data
+        shell: bash
+        env:
+          QUALITY_GATE: ${{ needs.sonarqube.outputs.quality_gate }}
+          FULL_SHA: ${{ github.sha }}
+        run: |
+          SHORT_SHA="${FULL_SHA:0:7}"
+
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+          if [ "$QUALITY_GATE" = "PASSED" ]; then
+            echo "quality_icon=✅" >> "$GITHUB_OUTPUT"
+          else
+            echo "quality_icon=❌" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send SonarQube result to Slack
+        uses: slackapi/slack-github-action@v4.0.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          errors: true
+
+          payload: |
+            {
+              "text": "SonarQube Scan Result for ${{ github.repository }}",
+              "attachments": [
+                {
+                  "color": "${{ needs.sonarqube.outputs.quality_gate == 'PASSED' && '#2eb886' || '#e01e5a' }}",
+                  "blocks": [
+                    {
+                      "type": "header",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "SonarQube Scan Result for ${{ github.repository }}",
+                        "emoji": true
+                      }
+                    },
+                    {
+                      "type": "section",
+                      "fields": [
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Pushed By:*\n${{ github.actor }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Branch:*\n${{ github.ref_name }}"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Commit:*\n`${{ steps.slack-data.outputs.short_sha }}`"
+                        },
+                        {
+                          "type": "mrkdwn",
+                          "text": "*Quality Gate:*\n${{ steps.slack-data.outputs.quality_icon }} *${{ needs.sonarqube.outputs.quality_gate }}*"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "section",
+                      "text": {
+                        "type": "mrkdwn",
+                        "text": "*Total Open Issues:* ${{ needs.sonarqube.outputs.open_issues }}"
+                      }
+                    },
+                    {
+                      "type": "actions",
+                      "elements": [
+                        {
+                          "type": "button",
+                          "text": {
+                            "type": "plain_text",
+                            "text": "View Dashboard"
+                          },
+                          "url": "${{ vars.SONAR_HOST_URL }}/dashboard?id=${{ vars.SONAR_PROJECT_KEY }}"
+                        },
+                        {
+                          "type": "button",
+                          "text": {
+                            "type": "plain_text",
+                            "text": "View Pipeline Run"
+                          },
+                          "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+
+  # =========================================================
+  # SONARQUBE QUALITY GATE ENFORCEMENT
+  # =========================================================
+
+  sonar-quality-gate:
+    name: SonarQube Quality Gate
+
+    runs-on: ubuntu-latest
+
+    needs:
+      - sonarqube
+      - sonar-slack
+
+    if: always() && needs.sonarqube.result == 'success'
+
+    steps:
+      - name: Enforce SonarQube Quality Gate
+        shell: bash
+        env:
+          QUALITY_GATE: ${{ needs.sonarqube.outputs.quality_gate }}
+        run: |
+          echo "SonarQube Quality Gate: $QUALITY_GATE"
+
+          if [ "$QUALITY_GATE" != "PASSED" ]; then
+            echo "❌ SonarQube Quality Gate FAILED."
+            echo "Deployment will not continue."
+            exit 1
+          fi
+
+          echo "✅ SonarQube Quality Gate PASSED."
+          echo "Deployment may continue."
 
   # =========================================================
   # 2. CODE SECURITY SCANNING
@@ -331,6 +726,7 @@ jobs:
     needs:
       - ci
       - codeql
+      - sonar-quality-gate
 
     runs-on: ubuntu-latest
 
