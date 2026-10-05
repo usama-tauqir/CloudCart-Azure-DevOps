@@ -234,7 +234,7 @@ jobs:
           path: ${{ env.APP_ROOT }}/dependency-audit.txt
           if-no-files-found: ignore
 
-    # =========================================================
+  # =========================================================
   # SONARQUBE CODE QUALITY ANALYSIS
   # =========================================================
 
@@ -314,9 +314,11 @@ jobs:
           dotnet tool install --global dotnet-sonarscanner
 
           echo "PATH=$PATH:$HOME/.dotnet/tools" >> "$GITHUB_ENV"
+
       # -----------------------------------------------------
       # Start SonarQube analysis
       # -----------------------------------------------------
+
       - name: SonarQube Begin
         working-directory: ${{ env.APP_ROOT }}
         shell: bash
@@ -324,8 +326,6 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           dotnet sonarscanner begin /k:"usama-tauqir_CloudCart-Azure-DevOps" /o:"usama-tauqir" /d:sonar.host.url="https://sonarcloud.io" /d:sonar.token="$SONAR_TOKEN"
-
-      
 
       # -----------------------------------------------------
       # Build application while scanner is active
@@ -349,6 +349,7 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
       # -----------------------------------------------------
       # Wait until SonarQube finishes processing
       # -----------------------------------------------------
@@ -449,7 +450,7 @@ jobs:
           echo "quality_gate=$QUALITY_GATE" >> "$GITHUB_OUTPUT"
           echo "open_issues=$OPEN_ISSUES" >> "$GITHUB_OUTPUT"
 
-    # =========================================================
+  # =========================================================
   # SONARQUBE SLACK NOTIFICATION
   # =========================================================
 
@@ -788,6 +789,52 @@ jobs:
               --location "$LOCATION"
           fi
 
+      # -----------------------------------------------------
+      # PostgreSQL (pgvector) shared by catalog, identity,
+      # ordering and webhooks. Each service creates its own
+      # database on startup via EF migrations.
+      #
+      # Dev-grade: no persistent volume, data resets on restart.
+      # -----------------------------------------------------
+
+      - name: Provision PostgreSQL
+        shell: bash
+        env:
+          PG_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "$PG_PASSWORD" ]; then
+            echo "ERROR: POSTGRES_PASSWORD secret is not set."
+            exit 1
+          fi
+
+          if az containerapp show \
+              --name postgres \
+              --resource-group "$RESOURCE_GROUP" \
+              >/dev/null 2>&1
+          then
+            echo "PostgreSQL already exists."
+          else
+            echo "Creating PostgreSQL container app..."
+
+            az containerapp create \
+              --name postgres \
+              --resource-group "$RESOURCE_GROUP" \
+              --environment "$ACA_ENVIRONMENT" \
+              --image docker.io/pgvector/pgvector:pg17 \
+              --ingress internal \
+              --transport tcp \
+              --target-port 5432 \
+              --exposed-port 5432 \
+              --min-replicas 1 \
+              --max-replicas 1 \
+              --cpu 0.5 \
+              --memory 1Gi \
+              --secrets "pg-password=$PG_PASSWORD" \
+              --env-vars "POSTGRES_PASSWORD=secretref:pg-password" \
+              --output none
+          fi
 
       # -----------------------------------------------------
       # Managed identity used by Container Apps to pull ACR images
@@ -1080,8 +1127,15 @@ jobs:
 
       - name: Deploy Container App
         shell: bash
+        env:
+          PG_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
         run: |
           set -euo pipefail
+
+          if [ -z "$PG_PASSWORD" ]; then
+            echo "ERROR: POSTGRES_PASSWORD secret is not set."
+            exit 1
+          fi
 
           IDENTITY_NAME="cloudcart-acr-pull"
 
@@ -1097,6 +1151,68 @@ jobs:
           fi
 
           IMAGE="${ACR_NAME}.azurecr.io/${{ matrix.image }}:${GITHUB_SHA}"
+
+          # ---------------------------------------------------
+          # Per-app configuration
+          # Replaces what the Aspire AppHost injects locally.
+          # ---------------------------------------------------
+
+          DOMAIN=$(az containerapp env show \
+            --name "$ACA_ENVIRONMENT" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query properties.defaultDomain \
+            --output tsv)
+
+          PG="Host=postgres;Port=5432;Username=postgres;Password=${PG_PASSWORD}"
+          IDENTITY_URL="https://identity-api.${DOMAIN}"
+
+          EXTRA_ARGS=()
+
+          case "${{ matrix.app }}" in
+
+            webapp)
+              EXTRA_ARGS=(
+                --min-replicas 1
+                --env-vars
+                  "IdentityUrl=${IDENTITY_URL}"
+                  "CallBackUrl=https://webapp.${DOMAIN}"
+              )
+              ;;
+
+            identity-api)
+              EXTRA_ARGS=(
+                --secrets "identitydb=${PG};Database=identitydb"
+                --env-vars "ConnectionStrings__identitydb=secretref:identitydb"
+              )
+              ;;
+
+            catalog-api)
+              EXTRA_ARGS=(
+                --min-replicas 1
+                --secrets "catalogdb=${PG};Database=catalogdb"
+                --env-vars "ConnectionStrings__catalogdb=secretref:catalogdb"
+              )
+              ;;
+
+            ordering-api)
+              EXTRA_ARGS=(
+                --secrets "orderingdb=${PG};Database=orderingdb"
+                --env-vars
+                  "ConnectionStrings__orderingdb=secretref:orderingdb"
+                  "Identity__Url=${IDENTITY_URL}"
+              )
+              ;;
+
+            webhooks-api)
+              EXTRA_ARGS=(
+                --secrets "webhooksdb=${PG};Database=webhooksdb"
+                --env-vars
+                  "ConnectionStrings__webhooksdb=secretref:webhooksdb"
+                  "Identity__Url=${IDENTITY_URL}"
+              )
+              ;;
+
+          esac
 
           echo "================================="
           echo "Deploying: ${{ matrix.app }}"
@@ -1144,7 +1260,9 @@ jobs:
               --image "$IMAGE" \
               --user-assigned "$IDENTITY_ID" \
               --registry-server "${ACR_NAME}.azurecr.io" \
-              --registry-identity "$IDENTITY_ID"
+              --registry-identity "$IDENTITY_ID" \
+              --output none \
+              "${EXTRA_ARGS[@]}"
 
           else
 
@@ -1157,13 +1275,13 @@ jobs:
               --registry-server "${ACR_NAME}.azurecr.io" \
               --registry-identity "$IDENTITY_ID" \
               --ingress "${{ matrix.ingress }}" \
-              --target-port 8080
+              --target-port 8080 \
+              --output none \
+              "${EXTRA_ARGS[@]}"
 
           fi
 
           echo "Deployment completed for ${{ matrix.app }}."
-
-
 
 
   # =========================================================
@@ -1191,6 +1309,11 @@ jobs:
           tenant-id: ${{ vars.AZURE_TENANT_ID }}
           subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Install Container Apps extension
+        shell: bash
+        run: |
+          az extension add --name containerapp --upgrade
+
       # -----------------------------------------------------
       # Obtain WebApp URL
       # -----------------------------------------------------
@@ -1216,17 +1339,20 @@ jobs:
 
       # -----------------------------------------------------
       # Smoke Test
+      # Allows time for new revisions to start and pull data
+      # from catalog-api on first request.
       # -----------------------------------------------------
 
       - name: Smoke test WebApp
         shell: bash
         run: |
-          for i in {1..12}
+          for i in {1..20}
           do
 
             STATUS=$(curl \
               --silent \
               --output /dev/null \
+              --max-time 30 \
               --write-out "%{http_code}" \
               "$WEBAPP_URL" || true)
 
@@ -1239,12 +1365,36 @@ jobs:
               exit 0
             fi
 
-            sleep 10
+            sleep 15
 
           done
 
           echo "Smoke test failed."
           exit 1
+
+      # -----------------------------------------------------
+      # Diagnostics on failure
+      # -----------------------------------------------------
+
+      - name: Dump Container App diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          for app in webapp catalog-api identity-api postgres; do
+            echo "================ $app ================"
+
+            az containerapp revision list \
+              --name "$app" \
+              --resource-group "$RESOURCE_GROUP" \
+              --query "[].{name:name, active:properties.active, health:properties.healthState, running:properties.runningState}" \
+              --output table || true
+
+            az containerapp logs show \
+              --name "$app" \
+              --resource-group "$RESOURCE_GROUP" \
+              --type console \
+              --tail 50 || true
+          done
 
 
   # =========================================================
